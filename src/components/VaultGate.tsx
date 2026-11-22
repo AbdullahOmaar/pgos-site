@@ -239,6 +239,9 @@ export default function VaultGate({ children }: { children: ReactNode }) {
           </button>
           {showRestore && (
             <div className="mt-3 space-y-2.5">
+              <p className="text-xs leading-relaxed text-muted">
+                تحذير: المفتاح الخاص سرّ — يُستخدم على جهازك فقط ولا يُرسَل لأي خادم أبدًا.
+              </p>
               <textarea
                 value={jwkText}
                 onChange={(e) => setJwkText(e.target.value)}

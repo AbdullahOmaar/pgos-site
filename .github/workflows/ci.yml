@@ -23,7 +23,9 @@ jobs:
           cache: npm
       - run: npm ci
       - run: npm run data:sanitize
-      - run: npm run build
+      - run: npm run vault:test
+      - run: npm run data:encrypt
+      - run: npm run build:encrypted
       - run: npm run lint
 
   supply-chain:
