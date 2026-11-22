@@ -25,7 +25,8 @@
     "lint": "oxlint",
     "preview": "vite preview",
     "data:encrypt": "node tools/encrypt_snapshot.mjs",
-    "vault:test": "node tools/vault-test.mjs"
+    "vault:test": "node tools/vault-test.mjs",
+    "build:encrypted": "node tools/build_encrypted.mjs"
   },
   "type": "module",
   "version": "0.1.0"

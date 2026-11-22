@@ -82,7 +82,7 @@ export default function Authority() {
           </dl>
         </Card>
         <Card>
-          <h2 className="mb-2 font-bold">قاعدة قناة المالك (DEC-PGOS-001)</h2>
+          <h2 className="mb-2 font-bold">قاعدة قناة المالك</h2>
           <p className="text-sm leading-relaxed">{g.owner_channel_rule}</p>
         </Card>
       </div>

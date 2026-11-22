@@ -2,11 +2,9 @@
 # Real data never enters Git (.gitignore): CI builds with DEMO data only
 # (data:sanitize reads no real sources), so the pipeline proves the
 # build/lint gates, not the data itself. Data generation is verified locally.
-# PINNING RULE (from the Trivy supply-chain compromise, Mar 2026): every
-# third-party action MUST be pinned by version + commit SHA before this
-# workflow is trusted. The two scan steps below are placeholders until
-# their SHAs are verified from the upstream repos — do not enable them
-# on a bare tag.
+# PINNING RULE (Trivy supply-chain compromise, Mar 2026): every third-party
+# tool pinned by version + SHA/digest — no floating tags. SHAs below were
+# verified against the upstream GitHub APIs on 2026-11-22.
 name: CI
 
 on:
@@ -33,8 +31,15 @@ jobs:
     continue-on-error: true # informational first — see TOOLS-VERDICTS.md
     steps:
       - uses: actions/checkout@v4
-      # TODO: enable after pinning real SHAs from upstream repos:
-      # - OSV-Scanner: google/osv-scanner-action (verify latest release + SHA)
-      # - Gitleaks: pinned BINARY (not the EULA-gated official action),
-      #   v8.30.1+ (fixes CVE-2026-63728)
-      - run: echo "supply-chain scans pending SHA pinning — see TODO above"
+      - name: OSV-Scanner
+        # google/osv-scanner-action v2.7.1, commit SHA verified 2026-11-22
+        uses: google/osv-scanner-action@32d3cd482bdadfb38b186c0ad1b031902d55d932
+        with:
+          scan-args: --recursive ./
+      - name: Gitleaks (pinned binary, not the EULA-gated action)
+        run: |
+          set -euo pipefail
+          curl -sSLO https://github.com/gitleaks/gitleaks/releases/download/v8.30.1/gitleaks_8.30.1_linux_x64.tar.gz
+          echo "551f6fc83ea457d62a0d98237cbad105af8d557003051f41f3e7ca7b3f2470eb  gitleaks_8.30.1_linux_x64.tar.gz" | sha256sum -c -
+          tar xzf gitleaks_8.30.1_linux_x64.tar.gz gitleaks
+          ./gitleaks detect --no-git --verbose --redact

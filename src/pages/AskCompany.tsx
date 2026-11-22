@@ -14,7 +14,7 @@ export default function AskCompany() {
       <Card className="mb-4">
         <div className="flex flex-wrap items-center gap-2">
           <Chip tone="warn">الحالة: لم يُنشأ النوت بوك بعد</Chip>
-          <Chip tone="muted">خطوة متصفح معلّقة — 3A-315</Chip>
+          <Chip tone="muted">خطوة متصفح معلّقة — بند التتبع في Linear</Chip>
         </div>
         <p className="mt-3 text-sm leading-relaxed">
           حزمة الإعداد <strong>جاهزة وموثقة</strong> في وثيقة تصميم «توتو» (§٥): النوت
@@ -22,7 +22,7 @@ export default function AskCompany() {
           مستندات المقر نفسها (سجل قرارات الشركة · بروتوكول المقر المشترك · سجل الشركة
           الموحّد · مرجع الشركة)، مع أسئلة بداية مقترحة. لكن <strong>إنشاء النوت بوك
           نفسه خطوة متصفح</strong> من واجهة NotebookLM بحساب المالك، وهي معلّقة ضمن
-          البنود المتبقية في بند 3A-315 — <strong>فلا يوجد رابط هنا</strong>، وأي رابط
+          البنود المتبقية في بند التتبع في Linear — <strong>فلا يوجد رابط هنا</strong>، وأي رابط
           يُعرض قبل الإنشاء الفعلي يكون اختراعًا.
         </p>
       </Card>
