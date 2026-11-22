@@ -5,4 +5,10 @@ dist
 public/data/site-data.json
 build-meta.local.json
 tools/__pycache__
+tests/__pycache__
 public/data/snapshot.enc.json
+# قواعد بيانات محلية للاختبار والمزامنة — لا تدخل Git أبدًا
+data/*.db
+*.db
+*.sqlite
+*.sqlite3

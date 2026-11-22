@@ -26,7 +26,9 @@
     "preview": "vite preview",
     "data:encrypt": "node tools/encrypt_snapshot.mjs",
     "vault:test": "node tools/vault-test.mjs",
-    "build:encrypted": "node tools/build_encrypted.mjs"
+    "build:encrypted": "node tools/build_encrypted.mjs",
+    "sync": "python3 tools/linear_sync_worker.py",
+    "sync:test": "python3 tests/test_sync_worker.py"
   },
   "type": "module",
   "version": "0.1.0"
