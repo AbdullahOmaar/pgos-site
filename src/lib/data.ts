@@ -21,6 +21,15 @@ function fetchSiteData(): Promise<SiteData> {
   return cache
 }
 
+/**
+ * حقن بيانات مفكوكة التشفير (وضع النشر المشفر — انظر VaultGate/unlock).
+ * بوابة الخزنة تستدعيها بعد فك اللقطة بنجاح، فتقرأ كل الصفحات البيانات
+ * من الكاش الجاهز بدل جلب /data/site-data.json.
+ */
+export function primeSiteData(data: SiteData): void {
+  cache = Promise.resolve(data)
+}
+
 export type DataState =
   | { phase: 'loading' }
   | { phase: 'error'; message: string }

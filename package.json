@@ -1,1 +1,32 @@
-{"dependencies":{"react":"^19.3.1","react-dom":"^19.3.1","react-router-dom":"^7.18.6"},"devDependencies":{"@tailwindcss/vite":"^4.3.5","@types/node":"^24.19.2","@types/react":"^19.3.0","@types/react-dom":"^19.3.0","@vitejs/plugin-react":"^6.1.2","oxlint":"^1.90.0","tailwindcss":"^4.3.5","typescript":"~7.0.2","vite":"^8.3.6"},"name":"pgos-site","private":true,"scripts":{"build":"tsc -b && vite build","data":"python3 tools/generate_data.py","data:sanitize":"python3 tools/generate_data.py --sanitize","dev":"vite","lint":"oxlint","preview":"vite preview"},"type":"module","version":"0.1.0"}
+{
+  "dependencies": {
+    "react": "^19.3.1",
+    "react-dom": "^19.3.1",
+    "react-router-dom": "^7.18.6"
+  },
+  "devDependencies": {
+    "@tailwindcss/vite": "^4.3.5",
+    "@types/node": "^24.19.2",
+    "@types/react": "^19.3.0",
+    "@types/react-dom": "^19.3.0",
+    "@vitejs/plugin-react": "^6.1.2",
+    "oxlint": "^1.90.0",
+    "tailwindcss": "^4.3.5",
+    "typescript": "~7.0.2",
+    "vite": "^8.3.6"
+  },
+  "name": "pgos-site",
+  "private": true,
+  "scripts": {
+    "build": "tsc -b && vite build",
+    "data": "python3 tools/generate_data.py",
+    "data:sanitize": "python3 tools/generate_data.py --sanitize",
+    "dev": "vite",
+    "lint": "oxlint",
+    "preview": "vite preview",
+    "data:encrypt": "node tools/encrypt_snapshot.mjs",
+    "vault:test": "node tools/vault-test.mjs"
+  },
+  "type": "module",
+  "version": "0.1.0"
+}

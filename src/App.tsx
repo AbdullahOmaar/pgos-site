@@ -1,5 +1,6 @@
 import { BrowserRouter, Route, Routes } from 'react-router-dom'
 import AppShell from './components/AppShell'
+import VaultGate from './components/VaultGate'
 import Overview from './pages/Overview'
 import Projects from './pages/Projects'
 import Decisions from './pages/Decisions'
@@ -20,7 +21,8 @@ import Preprod from './pages/Preprod'
 export default function App() {
   return (
     <BrowserRouter>
-      <AppShell>
+      <VaultGate>
+        <AppShell>
         <Routes>
           <Route path="/" element={<Overview />} />
           <Route path="/projects" element={<Projects />} />
@@ -39,8 +41,9 @@ export default function App() {
           <Route path="/adoption" element={<Adoption />} />
           <Route path="/ask" element={<AskCompany />} />
           <Route path="*" element={<Overview />} />
-        </Routes>
-      </AppShell>
+          </Routes>
+        </AppShell>
+      </VaultGate>
     </BrowserRouter>
   )
 }

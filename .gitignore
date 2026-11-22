@@ -5,3 +5,4 @@ dist
 public/data/site-data.json
 build-meta.local.json
 tools/__pycache__
+public/data/snapshot.enc.json
