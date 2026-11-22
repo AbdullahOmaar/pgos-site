@@ -1,0 +1,72 @@
+@import "tailwindcss";
+
+/*
+ * ثيم موقع PGOS — هوية 3A Automation
+ * نمط Tailwind v4 نفسه في تطبيق المدرس: نربط ألوان الأدوات بمتغيرات CSS
+ * عبر @theme inline فيعمل تبديل الثيم الداكن بتغيير المتغيرات فقط.
+ * الهوية: نيلي #3B3FA3 · سماوي #00D2FF · كهرماني #FFA726 · كحلي عميق #0A2342
+ */
+@theme inline {
+  --color-bg: var(--bg);
+  --color-card: var(--card);
+  --color-border: var(--border);
+  --color-text: var(--text);
+  --color-muted: var(--muted);
+  --color-primary: var(--primary);
+  --color-primary-d: var(--primary-d);
+  --color-accent: var(--accent);
+  --color-soft: var(--soft);
+  --color-ok: var(--ok);
+  --color-warn: var(--warn);
+  --color-bad: var(--bad);
+  --font-sans: "IBM Plex Sans Arabic", system-ui, -apple-system, "Segoe UI", Tahoma, Arial, sans-serif;
+}
+
+:root {
+  --bg: #f5f6fb;
+  --card: #ffffff;
+  --border: #e2e4f0;
+  --text: #12142e;
+  --muted: #5b6080;
+  --primary: #3b3fa3;
+  --primary-d: #2e3183;
+  --accent: #0090b8;
+  --soft: #eceefc;
+  --ok: #0e9f6e;
+  --warn: #ffa726;
+  --bad: #dc2626;
+}
+
+:root[data-theme="dark"] {
+  --bg: #0a2342;
+  --card: #0f2c52;
+  --border: #1e3a5f;
+  --text: #edf2fa;
+  --muted: #9db2ce;
+  --primary: #9ba0f0;
+  --primary-d: #7c81e8;
+  --accent: #00d2ff;
+  --soft: #16295e;
+  --ok: #34d399;
+  --warn: #ffa726;
+  --bad: #f87171;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--font-sans);
+  font-variant-numeric: tabular-nums;
+  line-height: 1.6;
+  -webkit-tap-highlight-color: transparent;
+}

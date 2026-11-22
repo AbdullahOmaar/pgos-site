@@ -1,0 +1,7 @@
+node_modules
+dist
+*.local
+# بيانات مولّدة حقيقية وملف تدقيق محلي — لا يدخلان Git أبدًا
+public/data/site-data.json
+build-meta.local.json
+tools/__pycache__
