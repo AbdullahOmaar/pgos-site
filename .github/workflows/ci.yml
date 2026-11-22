@@ -1,0 +1,40 @@
+# PGOS site CI — informational-first per the tools verdicts (3A-316).
+# Real data never enters Git (.gitignore): CI builds with DEMO data only
+# (data:sanitize reads no real sources), so the pipeline proves the
+# build/lint gates, not the data itself. Data generation is verified locally.
+# PINNING RULE (from the Trivy supply-chain compromise, Mar 2026): every
+# third-party action MUST be pinned by version + commit SHA before this
+# workflow is trusted. The two scan steps below are placeholders until
+# their SHAs are verified from the upstream repos — do not enable them
+# on a bare tag.
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+      - run: npm ci
+      - run: npm run data:sanitize
+      - run: npm run build
+      - run: npm run lint
+
+  supply-chain:
+    runs-on: ubuntu-latest
+    continue-on-error: true # informational first — see TOOLS-VERDICTS.md
+    steps:
+      - uses: actions/checkout@v4
+      # TODO: enable after pinning real SHAs from upstream repos:
+      # - OSV-Scanner: google/osv-scanner-action (verify latest release + SHA)
+      # - Gitleaks: pinned BINARY (not the EULA-gated official action),
+      #   v8.30.1+ (fixes CVE-2026-63728)
+      - run: echo "supply-chain scans pending SHA pinning — see TODO above"
