@@ -208,6 +208,9 @@ export interface LinearIssue {
   dueDate?: string | null
   url?: string
   projectUuid?: string
+  startedAt?: string | null
+  completedAt?: string | null
+  archivedAt?: string | null
   updatedAt?: string
 }
 
