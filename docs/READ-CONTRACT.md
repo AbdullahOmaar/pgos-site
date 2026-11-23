@@ -73,10 +73,13 @@
 
 ### ٣.٢ استعلام البنود والمهام (`pgos_issues`)
 
-- **الرابط الشامل:** `GET /rest/v1/pgos_issues?select=id,identifier,title,description,status_name,status_type,priority_value,due_date,url,project_id,project_linear_id,assignee_id,assignee_name,labels,started_at,completed_at,updated_at&order=updated_at.desc`
+- **الرابط الشامل:** `GET /rest/v1/pgos_issues?select=id,identifier,title,description,status_name,status_type,priority_value,due_date,url,project_id,project_linear_id,assignee_id,assignee_name,labels,started_at,completed_at,archived_at,updated_at&order=updated_at.desc`
 - **فلاتر شائعة تدعمها واجهة اوس:**
   - **حسب المشروع:** `?project_id=eq.{project_uuid}`
-  - **حسب نوع الحالة:** `?status_type=eq.started` (أو `completed` أو `unstarted`)
+  - **حسب نوع الحالة:** `?status_type=eq.started` (أو `completed` أو `unstarted` أو `backlog` أو `canceled`)
+  - **الحية فقط (غير المؤرشفة):** `?archived_at=is.null` (عددها لحظة المزامنة: 275)
+  - **المؤرشفة فقط (سجل الأرشيف):** `?archived_at=not.is.null` (عددها لحظة المزامنة: 163)
+  - **التاريخ الكامل (شامل المؤرشف والحالي):** بدون فلتر (الإجمالي في قاعدة البيانات: 438)
   - **حسب الليبل (المرحلة):** `?labels=cs.["Phase 1"]`
   - **المحدثة حديثًا:** `?updated_at=gte.{iso_timestamp}`
 - **شكل الاستجابة المتوقع:**
@@ -99,10 +102,25 @@
     "labels": ["Phase 1", "antigravity"],
     "started_at": "2026-11-23T01:30:00+02:00",
     "completed_at": null,
+    "archived_at": null,
     "updated_at": "2026-11-22T23:31:35.809Z"
   }
 ]
 ```
+
+### ٣.٢.١ منطق حساب نسب الإنجاز (Completion Percentage Logic)
+
+تحسب نسب إنجاز المشاريع والمهام في الواجهة وفق القاعدة الصارمة:
+$$\text{نسبة الإنجاز} = \frac{\text{Done}}{\text{total} - \text{Canceled}}$$
+
+- **التعريفات:**
+  - `Done`: البنود المنجزة (`status_type = 'completed'` أو `status_name = 'Done'`).
+  - `Canceled`: البنود الملغاة أو المكررة (`status_type = 'canceled'` أو `status_name IN ('Canceled', 'Duplicate')`).
+  - `total`: إجمالي البنود ضمن النطاق المستعلم عنه.
+  - إذا كان المقام $(\text{total} - \text{Canceled}) \le 0$ تكون النسبة `0%`.
+- **نطاق التطبيق (The Right Set):**
+  - **نسبة السبرنت / العمل الجاري:** تُحسب على البنود الحية (`archived_at IS NULL`).
+  - **نسبة الإنجاز التراكمية التاريخية:** تُحسب على كامل سجل المشروع في قاعدة البيانات (بما فيه المؤرشف).
 
 ---
 
@@ -199,11 +217,11 @@
     "finished_at": "2026-11-23T01:36:14.456Z",
     "status": "success",
     "projects_count": 9,
-    "issues_count": 261,
+    "issues_count": 438,
     "diff_summary": {
       "projects_total": 9,
-      "issues_total": 261,
-      "decisions_total": 18,
+      "issues_total": 438,
+      "decisions_total": 20,
       "releases_total": 9,
       "checklist_total": 45
     }
@@ -248,6 +266,7 @@ export interface LiveIssue {
   labels: string[]
   started_at: string | null
   completed_at: string | null
+  archived_at: string | null
   updated_at: string
   created_at?: string
   raw_data?: Record<string, unknown>

@@ -64,6 +64,7 @@ CREATE TABLE IF NOT EXISTS pgos_issues (
     labels TEXT NOT NULL DEFAULT '[]',
     started_at TEXT,
     completed_at TEXT,
+    archived_at TEXT,
     updated_at TEXT NOT NULL,
     created_at TEXT NOT NULL,
     raw_data TEXT NOT NULL DEFAULT '{}',
@@ -135,6 +136,7 @@ CREATE INDEX IF NOT EXISTS idx_issues_status_type ON pgos_issues(status_type);
 CREATE INDEX IF NOT EXISTS idx_issues_updated_at ON pgos_issues(updated_at);
 CREATE INDEX IF NOT EXISTS idx_issues_identifier ON pgos_issues(identifier);
 CREATE INDEX IF NOT EXISTS idx_issues_started_at ON pgos_issues(started_at);
+CREATE INDEX IF NOT EXISTS idx_issues_archived_at ON pgos_issues(archived_at);
 CREATE INDEX IF NOT EXISTS idx_checklist_category ON pgos_checklist_items(category);
 CREATE INDEX IF NOT EXISTS idx_checklist_check_number ON pgos_checklist_items(check_number);
 """
@@ -178,11 +180,11 @@ class LinearSource:
                 data = json.load(f)
                 return data.get("projects", [])
 
-        # Fetch projects from MCP with pagination (limit <= 50)
+        # Fetch projects from MCP with pagination (limit <= 50) including archived projects
         all_projects: List[Dict[str, Any]] = []
         cursor: Optional[str] = None
         while True:
-            args: Dict[str, Any] = {"limit": 50}
+            args: Dict[str, Any] = {"limit": 50, "includeArchived": True}
             if cursor:
                 args["cursor"] = cursor
             res = self._call_linear_mcp("list_projects", args)
@@ -204,7 +206,7 @@ class LinearSource:
         limit = 50
 
         while True:
-            args: Dict[str, Any] = {"limit": limit}
+            args: Dict[str, Any] = {"limit": limit, "includeArchived": True}
             if cursor:
                 args["cursor"] = cursor
             
@@ -251,7 +253,7 @@ def normalize_project(raw: Dict[str, Any]) -> Dict[str, Any]:
 
 
 def normalize_issue(raw: Dict[str, Any], project_id_map: Dict[str, str]) -> Dict[str, Any]:
-    """توحيد حقول البند وحالاته بما فيها أوقات الاستلام (started_at) والتسليم (completed_at)."""
+    """توحيد حقول البند وحالاته بما فيها أوقات الاستلام (started_at) والتسليم (completed_at) والأرشفة (archived_at)."""
     issue_id = raw.get("uuid") or raw.get("id")
     identifier = raw.get("id") or raw.get("identifier") or issue_id
 
@@ -266,12 +268,21 @@ def normalize_issue(raw: Dict[str, Any], project_id_map: Dict[str, str]) -> Dict
         s_lower = s_name.lower()
         if "done" in s_lower or "completed" in s_lower or "منجز" in s_lower or "مكتمل" in s_lower:
             s_type = "completed"
-        elif "progress" in s_lower or "started" in s_lower or "جار" in s_lower:
+        elif "progress" in s_lower or "started" in s_lower or "review" in s_lower or "جار" in s_lower:
             s_type = "started"
-        elif "cancel" in s_lower:
+        elif "cancel" in s_lower or "duplicate" in s_lower:
             s_type = "canceled"
+        elif "backlog" in s_lower:
+            s_type = "backlog"
         else:
             s_type = "unstarted"
+
+    if raw.get("statusType"):
+        st = str(raw["statusType"]).lower()
+        if st in ("completed", "started", "unstarted", "backlog", "canceled"):
+            s_type = st
+        elif st == "duplicate":
+            s_type = "canceled"
 
     # Priority mapping
     p_val = 0
@@ -305,6 +316,10 @@ def normalize_issue(raw: Dict[str, Any], project_id_map: Dict[str, str]) -> Dict
     else:
         labels_json = "[]"
 
+    archived_at = raw.get("archivedAt") or raw.get("archived_at")
+    started_at = raw.get("startedAt") or raw.get("started_at")
+    completed_at = raw.get("completedAt") or raw.get("completed_at")
+
     return {
         "id": issue_id,
         "identifier": identifier,
@@ -320,11 +335,16 @@ def normalize_issue(raw: Dict[str, Any], project_id_map: Dict[str, str]) -> Dict
         "assignee_id": assignee_id,
         "assignee_name": assignee_name,
         "labels": labels_json,
-        "started_at": raw.get("startedAt"),
-        "completed_at": raw.get("completedAt"),
-        "updated_at": raw.get("updatedAt") or datetime.datetime.now(datetime.timezone.utc).isoformat(),
-        "created_at": raw.get("createdAt") or datetime.datetime.now(datetime.timezone.utc).isoformat(),
-        "raw_data": json.dumps({"gitBranchName": raw.get("gitBranchName"), "teamId": raw.get("teamId")}, ensure_ascii=False)
+        "started_at": started_at,
+        "completed_at": completed_at,
+        "archived_at": archived_at,
+        "updated_at": raw.get("updatedAt") or raw.get("updated_at") or datetime.datetime.now(datetime.timezone.utc).isoformat(),
+        "created_at": raw.get("createdAt") or raw.get("created_at") or datetime.datetime.now(datetime.timezone.utc).isoformat(),
+        "raw_data": json.dumps({
+            "gitBranchName": raw.get("gitBranchName"),
+            "teamId": raw.get("teamId"),
+            "archivedAt": archived_at
+        }, ensure_ascii=False)
     }
 
 
@@ -859,6 +879,13 @@ class LocalSqliteTarget:
                 except Exception:
                     pass
 
+            # Ensure schema migration for archived_at column on pgos_issues
+            if "archived_at" not in iss_cols:
+                try:
+                    cursor.execute("ALTER TABLE pgos_issues ADD COLUMN archived_at TEXT")
+                except Exception:
+                    pass
+
             # Create indexes now that all columns are guaranteed to exist
             conn.executescript(SQLITE_INDEXES_SCHEMA)
             conn.commit()
@@ -906,12 +933,12 @@ class LocalSqliteTarget:
                     cursor.execute("""
                         INSERT INTO pgos_issues (id, identifier, title, description, status_name, status_type,
                                                 priority_value, due_date, url, project_id, project_linear_id,
-                                                assignee_id, assignee_name, labels, started_at, completed_at, updated_at,
-                                                created_at, raw_data)
+                                                assignee_id, assignee_name, labels, started_at, completed_at,
+                                                archived_at, updated_at, created_at, raw_data)
                         VALUES (:id, :identifier, :title, :description, :status_name, :status_type,
                                 :priority_value, :due_date, :url, :project_id, :project_linear_id,
-                                :assignee_id, :assignee_name, :labels, :started_at, :completed_at, :updated_at,
-                                :created_at, :raw_data)
+                                :assignee_id, :assignee_name, :labels, :started_at, :completed_at,
+                                :archived_at, :updated_at, :created_at, :raw_data)
                     """, iss)
                     inserted += 1
                 else:
@@ -932,6 +959,7 @@ class LocalSqliteTarget:
                             labels = :labels,
                             started_at = :started_at,
                             completed_at = :completed_at,
+                            archived_at = :archived_at,
                             updated_at = :updated_at,
                             raw_data = :raw_data
                         WHERE id = :id
@@ -1058,12 +1086,16 @@ class LocalSqliteTarget:
             c = conn.cursor()
             p_cnt = c.execute("SELECT COUNT(*) FROM pgos_projects").fetchone()[0]
             i_cnt = c.execute("SELECT COUNT(*) FROM pgos_issues").fetchone()[0]
+            live_i_cnt = c.execute("SELECT COUNT(*) FROM pgos_issues WHERE archived_at IS NULL").fetchone()[0]
+            arch_i_cnt = c.execute("SELECT COUNT(*) FROM pgos_issues WHERE archived_at IS NOT NULL").fetchone()[0]
             d_cnt = c.execute("SELECT COUNT(*) FROM pgos_hq_decisions").fetchone()[0]
             r_cnt = c.execute("SELECT COUNT(*) FROM pgos_releases").fetchone()[0]
             chk_cnt = c.execute("SELECT COUNT(*) FROM pgos_checklist_items").fetchone()[0]
             return {
                 "projects": p_cnt,
                 "issues": i_cnt,
+                "live_issues": live_i_cnt,
+                "archived_issues": arch_i_cnt,
                 "decisions": d_cnt,
                 "releases": r_cnt,
                 "checklist_items": chk_cnt

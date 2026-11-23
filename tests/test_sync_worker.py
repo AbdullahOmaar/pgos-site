@@ -56,15 +56,17 @@ class TestLinearSyncWorker(unittest.TestCase):
             dec_cols = [c[1] for c in cursor.execute("PRAGMA table_info(pgos_hq_decisions)").fetchall()]
             self.assertIn("rationale", dec_cols, "pgos_hq_decisions must include rationale column")
 
-            # Verify started_at column exists in pgos_issues
+            # Verify started_at and archived_at columns exist in pgos_issues
             iss_cols = [c[1] for c in cursor.execute("PRAGMA table_info(pgos_issues)").fetchall()]
             self.assertIn("started_at", iss_cols, "pgos_issues must include started_at column")
+            self.assertIn("archived_at", iss_cols, "pgos_issues must include archived_at column")
 
             # Verify indexes
             indexes = [r[0] for r in cursor.execute("SELECT name FROM sqlite_master WHERE type='index'").fetchall()]
             self.assertIn("idx_issues_project_id", indexes)
             self.assertIn("idx_issues_status_type", indexes)
             self.assertIn("idx_issues_started_at", indexes)
+            self.assertIn("idx_issues_archived_at", indexes)
             self.assertIn("idx_checklist_category", indexes)
             self.assertIn("idx_checklist_check_number", indexes)
 
@@ -84,19 +86,21 @@ class TestLinearSyncWorker(unittest.TestCase):
         self.assertEqual(norm["name"], "Wedora — دعوات الأفراح")
         self.assertEqual(norm["status_name"], "In Progress")
 
-    def test_normalize_issue_with_started_and_completed_timestamps(self):
-        """التحقق من توحيد حقول البند وطوابع الاستلام startedAt والتسليم completedAt."""
+    def test_normalize_issue_with_started_completed_and_archived_timestamps(self):
+        """التحقق من توحيد حقول البند وطوابع الاستلام startedAt والتسليم completedAt والأرشفة archivedAt."""
         raw = {
             "id": "3A-381",
             "uuid": "af4104d4-fe62-452b-8880-07fa8727a02a",
             "title": "اوس الديناميكي",
             "status": "In Progress",
+            "statusType": "started",
             "priority": {"value": 2},
             "projectId": "505d0430-3603-4dca-b8ac-e9a6d0f1c24b",
             "assignee": {"id": "usr-1", "name": "abdo"},
             "labels": ["Phase 1", "antigravity"],
             "startedAt": "2026-11-23T01:30:00+02:00",
-            "completedAt": "2026-11-23T02:00:00+02:00"
+            "completedAt": "2026-11-23T02:00:00+02:00",
+            "archivedAt": None
         }
         proj_map = {"505d0430-3603-4dca-b8ac-e9a6d0f1c24b": "505d0430-3603-4dca-b8ac-e9a6d0f1c24b"}
         norm = normalize_issue(raw, proj_map)
@@ -107,7 +111,24 @@ class TestLinearSyncWorker(unittest.TestCase):
         self.assertEqual(norm["assignee_name"], "abdo")
         self.assertEqual(norm["started_at"], "2026-11-23T01:30:00+02:00")
         self.assertEqual(norm["completed_at"], "2026-11-23T02:00:00+02:00")
+        self.assertIsNone(norm["archived_at"])
         self.assertIn("Phase 1", json.loads(norm["labels"]))
+
+        # Verify archived issue normalization
+        archived_raw = {
+            "id": "3A-190",
+            "uuid": "u-arch-1",
+            "title": "Archived Task",
+            "status": "Done",
+            "statusType": "completed",
+            "archivedAt": "2026-11-20T21:47:05.844Z"
+        }
+        norm_arch = normalize_issue(archived_raw, proj_map)
+        self.assertEqual(norm_arch["identifier"], "3A-190")
+        self.assertEqual(norm_arch["status_type"], "completed")
+        self.assertEqual(norm_arch["archived_at"], "2026-11-20T21:47:05.844Z")
+        raw_meta = json.loads(norm_arch["raw_data"])
+        self.assertEqual(raw_meta.get("archivedAt"), "2026-11-20T21:47:05.844Z")
 
     def test_load_hq_decisions_structure_and_rationale(self):
         """التحقق من تحميل قرارات المقر بتواريخها وأسبابها ورابط مستند المقر الكانوني."""
@@ -177,13 +198,14 @@ class TestLinearSyncWorker(unittest.TestCase):
         self.assertTrue("partial" in aiba_statuses, "AIBA must have partial status from eval-aiba")
 
     def test_idempotent_upsert_runs_all_entities(self):
-        """التحقق من حتمية المزامنة عبر كافة الكيانات (المشاريع، المهام، القرارات، الإصدارات، الفحوصات)."""
+        """التحقق من حتمية المزامنة عبر كافة الكيانات (المشاريع، المهام بما فيها المؤرشفة، القرارات، الإصدارات، الفحوصات)."""
         raw_projects = [
             {"id": "P-3A-1", "uuid": "u-p1", "name": "Project 1", "statusName": "Active"}
         ]
         raw_issues = [
             {"id": "3A-1", "uuid": "u-i1", "title": "Task 1", "statusName": "Todo", "projectId": "u-p1", "startedAt": "2026-11-23T01:00:00Z"},
-            {"id": "3A-2", "uuid": "u-i2", "title": "Task 2", "statusName": "Done", "projectId": "u-p1", "completedAt": "2026-11-23T02:00:00Z"}
+            {"id": "3A-2", "uuid": "u-i2", "title": "Task 2", "statusName": "Done", "projectId": "u-p1", "completedAt": "2026-11-23T02:00:00Z"},
+            {"id": "3A-3", "uuid": "u-i3", "title": "Task 3 Archived", "statusName": "Done", "projectId": "u-p1", "archivedAt": "2026-11-20T21:47:05.844Z"}
         ]
 
         class MockLinearSource:
@@ -198,14 +220,16 @@ class TestLinearSyncWorker(unittest.TestCase):
         res1 = coordinator.run_cycle()
         self.assertTrue(res1["ok"])
         self.assertEqual(res1["diff"]["projects_inserted"], 1)
-        self.assertEqual(res1["diff"]["issues_inserted"], 2)
+        self.assertEqual(res1["diff"]["issues_inserted"], 3)
         self.assertGreater(res1["diff"]["decisions_inserted"], 0)
         self.assertGreater(res1["diff"]["releases_inserted"], 0)
         self.assertEqual(res1["diff"]["checklist_inserted"], 45)
 
         counts1 = self.target.get_counts()
         self.assertEqual(counts1["projects"], 1)
-        self.assertEqual(counts1["issues"], 2)
+        self.assertEqual(counts1["issues"], 3)
+        self.assertEqual(counts1["live_issues"], 2)
+        self.assertEqual(counts1["archived_issues"], 1)
         self.assertGreaterEqual(counts1["decisions"], 14)
         self.assertGreaterEqual(counts1["releases"], 8)
         self.assertEqual(counts1["checklist_items"], 45)
@@ -216,7 +240,7 @@ class TestLinearSyncWorker(unittest.TestCase):
         self.assertEqual(res2["diff"]["projects_inserted"], 0)
         self.assertEqual(res2["diff"]["projects_updated"], 1)
         self.assertEqual(res2["diff"]["issues_inserted"], 0)
-        self.assertEqual(res2["diff"]["issues_updated"], 2)
+        self.assertEqual(res2["diff"]["issues_updated"], 3)
         self.assertEqual(res2["diff"]["decisions_inserted"], 0)
         self.assertEqual(res2["diff"]["releases_inserted"], 0)
         self.assertEqual(res2["diff"]["checklist_inserted"], 0)
@@ -224,12 +248,14 @@ class TestLinearSyncWorker(unittest.TestCase):
         counts2 = self.target.get_counts()
         self.assertEqual(counts2["projects"], counts1["projects"], "Projects count must not change")
         self.assertEqual(counts2["issues"], counts1["issues"], "Issues count must not change")
+        self.assertEqual(counts2["live_issues"], 2)
+        self.assertEqual(counts2["archived_issues"], 1)
         self.assertEqual(counts2["decisions"], counts1["decisions"], "Decisions count must not change")
         self.assertEqual(counts2["releases"], counts1["releases"], "Releases count must not change")
         self.assertEqual(counts2["checklist_items"], 45, "Checklist count must remain 45")
 
     def test_sql_migrations_syntax_and_structure(self):
-        """التحقق من ملفات الهجرات SQL وصحة عباراتها بما فيها هجرة الفحوصات والقرارات وطوابع البدء."""
+        """التحقق من ملفات الهجرات SQL وصحة عباراتها بما فيها هجرة الفحوصات والقرارات وطوابع البدء والأرشفة."""
         migrations_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "supabase", "migrations"))
         files = sorted(glob.glob(os.path.join(migrations_dir, "*.sql")))
         self.assertGreaterEqual(len(files), 3, "Expected at least 3 migration files")
@@ -248,9 +274,66 @@ class TestLinearSyncWorker(unittest.TestCase):
                 elif "000003" in fpath:
                     self.assertIn("ALTER TABLE public.pgos_hq_decisions ADD COLUMN IF NOT EXISTS rationale", content)
                     self.assertIn("ALTER TABLE public.pgos_issues ADD COLUMN IF NOT EXISTS started_at", content)
+                    self.assertIn("ALTER TABLE public.pgos_issues ADD COLUMN IF NOT EXISTS archived_at", content)
                     self.assertIn("CREATE TABLE IF NOT EXISTS public.pgos_checklist_items", content)
                     self.assertIn("ALTER TABLE public.pgos_checklist_items ENABLE ROW LEVEL SECURITY", content)
                     self.assertIn("REVOKE ALL ON TABLE public.pgos_checklist_items FROM anon, public", content)
+
+    def test_fetch_linear_includes_archived(self):
+        """التحقق من تمرير includeArchived: true صراحة في استعلامات مشاريع ومهام Linear."""
+        recorded_calls = []
+
+        class SpyLinearSource(LinearSource):
+            def _call_linear_mcp(self, tool_name: str, arguments: dict):
+                recorded_calls.append((tool_name, arguments))
+                if tool_name == "list_projects":
+                    return {"projects": [], "hasNextPage": False}
+                elif tool_name == "list_issues":
+                    return {"issues": [], "hasNextPage": False}
+                return {}
+
+        spy = SpyLinearSource(cli_bin="dummy")
+        spy.fetch_projects()
+        spy.fetch_all_issues()
+
+        self.assertEqual(len(recorded_calls), 2)
+        proj_call = [c for c in recorded_calls if c[0] == "list_projects"][0]
+        issue_call = [c for c in recorded_calls if c[0] == "list_issues"][0]
+
+        self.assertTrue(proj_call[1].get("includeArchived"), "list_projects must include includeArchived: true")
+        self.assertTrue(issue_call[1].get("includeArchived"), "list_issues must include includeArchived: true")
+
+    def test_completion_percentage_calculation(self):
+        """التحقق من حساب نسبة الإنجاز: Done / (total - Canceled) على المجموعتين (الحية والكاملة)."""
+        def calc_percentage(issues_list):
+            done = sum(1 for i in issues_list if (i.get("status_name") == "Done" or i.get("status_type") == "completed"))
+            canceled = sum(1 for i in issues_list if (i.get("status_name") == "Canceled" or i.get("status_type") == "canceled"))
+            denominator = len(issues_list) - canceled
+            if denominator <= 0:
+                return 0.0
+            return round((done / denominator) * 100, 2)
+
+        # Full set simulation (438 issues: 211 Done, 59 Canceled, 168 other)
+        full_set = (
+            [{"status_name": "Done", "status_type": "completed"}] * 211 +
+            [{"status_name": "Canceled", "status_type": "canceled"}] * 59 +
+            [{"status_name": "In Progress", "status_type": "started"}] * 168
+        )
+        self.assertEqual(len(full_set), 438)
+        pct_full = calc_percentage(full_set)
+        # 211 / (438 - 59) = 211 / 379 = 55.67%
+        self.assertEqual(pct_full, 55.67)
+
+        # Live set simulation (275 issues: 92 Done, 18 Canceled, 165 other)
+        live_set = (
+            [{"status_name": "Done", "status_type": "completed"}] * 92 +
+            [{"status_name": "Canceled", "status_type": "canceled"}] * 18 +
+            [{"status_name": "In Progress", "status_type": "started"}] * 165
+        )
+        self.assertEqual(len(live_set), 275)
+        pct_live = calc_percentage(live_set)
+        # 92 / (275 - 18) = 92 / 257 = 35.80%
+        self.assertEqual(pct_live, 35.80)
 
     def test_zero_secrets_leakage(self):
         """التحقق من عدم تسرب أي أسرار أو مفاتيح في السجلات وسجل المزامنة."""

@@ -5,9 +5,11 @@
 -- 1. Ensure rationale column exists on pgos_hq_decisions
 ALTER TABLE public.pgos_hq_decisions ADD COLUMN IF NOT EXISTS rationale TEXT;
 
--- 2. Ensure started_at column exists on pgos_issues (tracking work pickup time)
+-- 2. Ensure started_at and archived_at columns exist on pgos_issues (tracking work pickup time and archive history)
 ALTER TABLE public.pgos_issues ADD COLUMN IF NOT EXISTS started_at TIMESTAMPTZ;
 CREATE INDEX IF NOT EXISTS idx_issues_started_at ON public.pgos_issues(started_at);
+ALTER TABLE public.pgos_issues ADD COLUMN IF NOT EXISTS archived_at TIMESTAMPTZ;
+CREATE INDEX IF NOT EXISTS idx_issues_archived_at ON public.pgos_issues(archived_at);
 
 -- 3. Pre-production 45-Checklist table
 CREATE TABLE IF NOT EXISTS public.pgos_checklist_items (
