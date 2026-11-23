@@ -5,6 +5,7 @@
 **الحالة:** معتمد كمرجع للواجهة (Approved Read Contract)  
 **المستهلك الأساسي:** واجهة اوس (المسار 3A-352 / تطبيق `pgos-site`)  
 **المصدر:** قاعدة بيانات Supabase (Postgres) عبر واجهة PostgREST المؤمنة بـ RLS  
+**سجل القرار الحاكم:** سجل قرارات المقر المشترك الكانوني (Doc `1AOSBHTBeHkHJ4NBFeUgLwuyVfpckRu2BWt33cncNxNM`) وسجل `DEC-TOTO-003` الكائن فعليًا في: `~/workspace/ops-system/pgos/records/DEC-TOTO-003.json`
 
 ---
 
@@ -16,6 +17,7 @@
 - هذا العقد **للقراءة فقط (Read-Only)** بالنسبة لواجهة المتصفح.
 - لا توجد أي استعلامات `POST` أو `PATCH` أو `DELETE` مسموح بها من جهة العميل (Client-side).
 - كافة عمليات الكتابة والتحديث محصورة بعامل المزامنة الخلفي (`linear_sync_worker.py`).
+- قاعدة معمارية البيانات (توجيه المالك 2026-11-23): «كله في قاعدة البيانات ودرايف مجرد فيديوهات بس» — الجداول الخمسة مغذاة ومحدثة فعليًا ولا توجد جداول فارغة.
 
 ---
 
@@ -71,7 +73,7 @@
 
 ### ٣.٢ استعلام البنود والمهام (`pgos_issues`)
 
-- **الرابط الشامل:** `GET /rest/v1/pgos_issues?select=id,identifier,title,description,status_name,status_type,priority_value,due_date,url,project_id,project_linear_id,assignee_id,assignee_name,labels,completed_at,updated_at&order=updated_at.desc`
+- **الرابط الشامل:** `GET /rest/v1/pgos_issues?select=id,identifier,title,description,status_name,status_type,priority_value,due_date,url,project_id,project_linear_id,assignee_id,assignee_name,labels,started_at,completed_at,updated_at&order=updated_at.desc`
 - **فلاتر شائعة تدعمها واجهة اوس:**
   - **حسب المشروع:** `?project_id=eq.{project_uuid}`
   - **حسب نوع الحالة:** `?status_type=eq.started` (أو `completed` أو `unstarted`)
@@ -95,6 +97,7 @@
     "assignee_id": "6c8f99ef-221b-4eff-bb56-6d77fc8fe823",
     "assignee_name": "abdo Omar",
     "labels": ["Phase 1", "antigravity"],
+    "started_at": "2026-11-23T01:30:00+02:00",
     "completed_at": null,
     "updated_at": "2026-11-22T23:31:35.809Z"
   }
@@ -105,25 +108,85 @@
 
 ### ٣.٣ استعلام قرارات المقر المشترك (`pgos_hq_decisions`)
 
-- **الرابط:** `GET /rest/v1/pgos_hq_decisions?select=id,heading,body,category,effective_date,source,created_at&order=created_at.desc`
+- **الرابط:** `GET /rest/v1/pgos_hq_decisions?select=id,heading,body,category,effective_date,source,rationale,created_at&order=effective_date.desc,created_at.desc`
+- **المصدر الكانوني:** مستند قرارات الشركة في Google Drive (المعرف `1AOSBHTBeHkHJ4NBFeUgLwuyVfpckRu2BWt33cncNxNM`) ومجلد المقر المشترك (`1y5jGU_QF4ViayykS60ffIgM6GiZKdm8h`).
 - **شكل الاستجابة المتوقع:**
 ```json
 [
   {
-    "id": "hq-dec-2026-11-22-01",
-    "heading": "قرار المالك — اوس الديناميكي (3A-357)",
-    "body": "عايز الموضوع يبقى داينمك — مش كل بروجكت نعمله ديبلوي...",
-    "category": "Architecture",
-    "effective_date": "2026-11-22",
-    "source": "سجل قرارات المقر المشترك",
-    "created_at": "2026-11-22T15:26:00Z"
+    "id": "hq-dec-12",
+    "heading": "١١. حصر القراءة في قاعدة البيانات («كله في قاعدة البيانات»)",
+    "body": "قرار المالك 2026-11-23 ~06:27 EET: «كله في قاعدة البيانات ودرايف مجرد فيديوهات بس»...",
+    "category": "Governance",
+    "effective_date": "2026-11-23",
+    "source": "سجل قرارات الشركة — مقر Drive المشترك (Google Doc id 1AOSBHTBeHkHJ4NBFeUgLwuyVfpckRu2BWt33cncNxNM)",
+    "rationale": "توحيد القراءة في مخزن ديناميكي واحد لخدمة اوس، وتحرير النظام من الاعتماد على مستندات درايف إلا لحفظ الفيديو والوسائط.",
+    "created_at": "2026-11-23T06:27:00Z"
   }
 ]
 ```
 
 ---
 
-### ٣.٤ استعلام سجل المزامنة وحالة التحديث (`pgos_sync_runs`)
+### ٣.٤ استعلام سجل إصدارات المشاريع (`pgos_releases`)
+
+- **الرابط:** `GET /rest/v1/pgos_releases?select=id,name,project_id,status,released_at,description,metadata&order=released_at.desc`
+- **شكل الاستجابة المتوقع:**
+```json
+[
+  {
+    "id": "rel-nounou-v0-2-0-portal",
+    "name": "نونو v0.2.0 — جلسات أجهزة بوابة أولياء الأمور (3A-375)",
+    "project_id": "9844a5cc-de6f-4af4-97b9-7415bfc9fb3c",
+    "status": "deployed",
+    "released_at": "2026-11-23T11:45:00+02:00",
+    "description": "جلسات أجهزة بوابة أولياء الأمور لنظام الحضانات نونو — الرمز هو الجلسة (Option A) بدمج PR #19 بالالتزام 6a23b3c.",
+    "metadata": {
+      "repo": "AbdullahOmaar/nounou-app",
+      "pr": 19,
+      "commit": "6a23b3c"
+    }
+  }
+]
+```
+
+---
+
+### ٣.٥ استعلام قائمة الـ45 فحص لما قبل الإنتاج (`pgos_checklist_items`)
+
+- **الرابط:** `GET /rest/v1/pgos_checklist_items?select=id,check_number,category,title,how_to_verify,teacher_status,teacher_evidence,nounou_status,nounou_evidence,pgos_status,pgos_evidence,aiba_status,aiba_evidence,notes,project_statuses&order=check_number.asc`
+- **المصادر الكانونية:** `pre-production-checklist.csv` بالمقر وملفات التقييم الحية `checklist/eval-nounou-2026-11-23.md`, `eval-pgos-2026-11-23.md`, `eval-aiba-2026-11-23.md`.
+- **شكل الاستجابة المتوقع:**
+```json
+[
+  {
+    "id": 1,
+    "check_number": 1,
+    "category": "اختبارات وظيفية",
+    "title": "Unit tests للدوال والمنطق",
+    "how_to_verify": "تشغيل آلي في CI ويمنع الدمج عند الفشل",
+    "teacher_status": "done",
+    "teacher_evidence": "223 اختبار وحدة في CI",
+    "nounou_status": "done",
+    "nounou_evidence": "CI run 45115152134: vitest 15 ملفًا / 86 اختبارًا passed",
+    "pgos_status": "partial",
+    "pgos_evidence": "tools/vault-test.mjs 6/6 PASS + tests/test_sync_worker.py 10/10",
+    "aiba_status": "done",
+    "aiba_evidence": "CI run 45105028297 frontend-unit-tests + backend-accounting",
+    "notes": "",
+    "project_statuses": {
+      "teacher_app": {"status": "done", "evidence": "223 اختبار وحدة في CI"},
+      "nounou": {"status": "done", "evidence": "CI run 45115152134: vitest 15 ملفًا / 86 اختبارًا passed"},
+      "pgos_site": {"status": "partial", "evidence": "tools/vault-test.mjs 6/6 PASS"},
+      "aiba": {"status": "done", "evidence": "CI run 45105028297"}
+    }
+  }
+]
+```
+
+---
+
+### ٣.٦ استعلام سجل المزامنة وحالة التحديث (`pgos_sync_runs`)
 
 تستخدمه الواجهة لعرض **شارة حداثة البيانات (Freshness Badge)** في الترويسة العلوية:
 - **الرابط:** `GET /rest/v1/pgos_sync_runs?select=id,started_at,finished_at,status,projects_count,issues_count,diff_summary&order=started_at.desc&limit=1`
@@ -136,11 +199,13 @@
     "finished_at": "2026-11-23T01:36:14.456Z",
     "status": "success",
     "projects_count": 9,
-    "issues_count": 208,
+    "issues_count": 261,
     "diff_summary": {
       "projects_total": 9,
-      "issues_total": 208,
-      "issues_updated": 4
+      "issues_total": 261,
+      "decisions_total": 18,
+      "releases_total": 9,
+      "checklist_total": 45
     }
   }
 ]
@@ -181,6 +246,7 @@ export interface LiveIssue {
   assignee_id: string | null
   assignee_name: string | null
   labels: string[]
+  started_at: string | null
   completed_at: string | null
   updated_at: string
   created_at?: string
@@ -194,7 +260,37 @@ export interface LiveHqDecision {
   category: string | null
   effective_date: string | null
   source: string | null
+  rationale: string | null
   created_at: string
+  updated_at: string
+}
+
+export interface LiveRelease {
+  id: string
+  name: string
+  project_id: string | null
+  status: 'planned' | 'in_progress' | 'ready_for_approval' | 'staging' | 'deployed' | 'live_verified'
+  released_at: string | null
+  description: string | null
+  metadata?: Record<string, unknown>
+}
+
+export interface LiveChecklistItem {
+  id: number
+  check_number: number
+  category: string
+  title: string
+  how_to_verify: string | null
+  teacher_status: 'done' | 'partial' | 'not_started' | 'na' | 'not_evaluated'
+  teacher_evidence: string | null
+  nounou_status: 'done' | 'partial' | 'not_started' | 'na' | 'not_evaluated'
+  nounou_evidence: string | null
+  pgos_status: 'done' | 'partial' | 'not_started' | 'na' | 'not_evaluated'
+  pgos_evidence: string | null
+  aiba_status: 'done' | 'partial' | 'not_started' | 'na' | 'not_evaluated'
+  aiba_evidence: string | null
+  notes: string | null
+  project_statuses: Record<string, { status: string; evidence?: string; symbol?: string }>
 }
 
 export interface LiveSyncRun {
@@ -207,8 +303,9 @@ export interface LiveSyncRun {
   diff_summary: {
     projects_total?: number
     issues_total?: number
-    issues_inserted?: number
-    issues_updated?: number
+    decisions_total?: number
+    releases_total?: number
+    checklist_total?: number
   }
   error_message?: string | null
 }
@@ -222,11 +319,14 @@ export interface LiveSyncRun {
 
 ```typescript
 import { useState, useEffect } from 'react'
-import type { LiveProject, LiveIssue, LiveSyncRun } from './types'
+import type { LiveProject, LiveIssue, LiveHqDecision, LiveRelease, LiveChecklistItem, LiveSyncRun } from './types'
 
 export interface LiveDataState {
   projects: LiveProject[]
   issues: LiveIssue[]
+  decisions: LiveHqDecision[]
+  releases: LiveRelease[]
+  checklist: LiveChecklistItem[]
   lastSync: LiveSyncRun | null
   isLive: boolean
   loading: boolean
@@ -237,6 +337,9 @@ export function usePgosData(): LiveDataState {
   const [state, setState] = useState<LiveDataState>({
     projects: [],
     issues: [],
+    decisions: [],
+    releases: [],
+    checklist: [],
     lastSync: null,
     isLive: false,
     loading: true,
@@ -258,9 +361,12 @@ export function usePgosData(): LiveDataState {
       try {
         const headers = { apikey: anonKey, Authorization: `Bearer ${anonKey}` }
         
-        const [projRes, issRes, syncRes] = await Promise.all([
+        const [projRes, issRes, decRes, relRes, chkRes, syncRes] = await Promise.all([
           fetch(`${supabaseUrl}/rest/v1/pgos_projects?select=*&order=linear_id.asc`, { headers }),
           fetch(`${supabaseUrl}/rest/v1/pgos_issues?select=*&order=updated_at.desc`, { headers }),
+          fetch(`${supabaseUrl}/rest/v1/pgos_hq_decisions?select=*&order=effective_date.desc`, { headers }),
+          fetch(`${supabaseUrl}/rest/v1/pgos_releases?select=*&order=released_at.desc`, { headers }),
+          fetch(`${supabaseUrl}/rest/v1/pgos_checklist_items?select=*&order=check_number.asc`, { headers }),
           fetch(`${supabaseUrl}/rest/v1/pgos_sync_runs?select=*&order=started_at.desc&limit=1`, { headers }),
         ])
 
@@ -268,15 +374,21 @@ export function usePgosData(): LiveDataState {
           throw new Error('PostgREST request rejected by policy or network')
         }
 
-        const [projects, issues, syncRuns] = await Promise.all([
+        const [projects, issues, decisions, releases, checklist, syncRuns] = await Promise.all([
           projRes.json(),
           issRes.json(),
+          decRes.ok ? decRes.json() : [],
+          relRes.ok ? relRes.json() : [],
+          chkRes.ok ? chkRes.json() : [],
           syncRes.ok ? syncRes.json() : [],
         ])
 
         setState({
           projects,
           issues,
+          decisions,
+          releases,
+          checklist,
           lastSync: syncRuns[0] || null,
           isLive: true,
           loading: false,
@@ -300,9 +412,9 @@ export function usePgosData(): LiveDataState {
 ## ٦. ضمانات الأمان والأداء
 
 1. **حجم الحمولة والأداء:**
-   - استعلام البنود يعيد الحقول الأساسية للعرض دون تضمين الأوصاف الطويلة جدًا (`description` مختصر أو اختياري) لتفادي استهلاك الباندويث.
-   - الفهارس المنشأة على `project_id`, `status_type`, و `updated_at` تضمن سرعة استجابة < 30ms على PostgREST.
+   - استعلام البنود يعيد الحقول الأساسية للعرض دون تضمين الأوصاف الطويلة جدًا لتفادي استهلاك الباندويث.
+   - الفهارس المنشأة على `project_id`, `status_type`, `started_at`, `check_number`, و `updated_at` تضمن سرعة استجابة < 30ms على PostgREST.
 2. **العزل التام للأسرار:**
-   - الواجهة لا تحوي سوى `VITE_SUPABASE_ANON_KEY` الذي لا يمنح أي صلاحيات خارج نطاق سياسات RLS المعتمدة.
+   - الواجهة لا تحوي سوى `VITE_SUPABASE_ANON_KEY` الذي لا يمنح أي صلاحيات خارج نطاق سياسات RLS المعتمدة (قراءة فقط للمالك المسجل، حظر كامل للعامة).
 3. **التكامل مع شات التصميم (3A-352):**
    - هذا العقد جاهز تمامًا ومُوثق ليعتمد عليه شات التصميم عند استئناف بناء الـ UI بعد اعتماد المالك للموك أب.
