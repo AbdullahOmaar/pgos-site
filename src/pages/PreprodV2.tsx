@@ -94,7 +94,7 @@ export default function PreprodV2() {
             return (
               <Card key={c.id} className="p-0">
                 <button type="button" onClick={() => setOpenId(open ? null : c.id)} aria-expanded={open} className="min-h-11 w-full p-4 text-start active:bg-soft/60">
-                  <p className="text-sm"><span className="font-bold">#{c.check_number}</span> <span className="text-xs text-muted">{c.category}</span></p>
+                  <p className="text-sm"><span className="font-bold">#{c.id}</span> <span className="text-xs text-muted">{c.category}</span></p>
                   <p className="mt-1 font-semibold">{c.item}</p>
                   <p className="mt-2 flex flex-wrap gap-1.5">
                     {APPS.map((a) => (
