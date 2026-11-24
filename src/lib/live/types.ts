@@ -59,6 +59,17 @@ export interface LiveSyncRun {
   issues_count: number | null
 }
 
+export type ChecklistStatus = 'done' | 'partial' | 'not_started' | 'na' | 'not_evaluated' | string
+
+export interface LiveChecklistItem {
+  id: number
+  check_number: number
+  category: string
+  title: string
+  how_to_verify: string | null
+  project_statuses: Record<string, { status: string; evidence?: string }>
+}
+
 export type DataSourceKind = 'live' | 'snapshot' | 'unavailable'
 
 export interface OsDataset {
@@ -68,6 +79,7 @@ export interface OsDataset {
   issues: LiveIssue[]
   decisions: LiveDecision[]
   releases: LiveRelease[]
+  checklist: LiveChecklistItem[]
   lastSync: LiveSyncRun | null
   openRisks: number
   ledgerCount: number

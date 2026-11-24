@@ -61,6 +61,18 @@ function fromSnapshot(d: SiteData): OsDataset {
       released_at: null,
       description: null,
     })),
+    checklist: d.preprod_checklist.checks.map((c) => ({
+      id: c.id,
+      check_number: c.id,
+      category: c.category,
+      title: c.item,
+      how_to_verify: c.how,
+      project_statuses: {
+        teacher_app: { status: c.apps.teacher.status, evidence: c.apps.teacher.evidence },
+        nounou: { status: c.apps.nounou.status },
+        pgos_site: { status: c.apps.pgos.status },
+      },
+    })),
     lastSync: null,
     openRisks: d.records.risks.filter((x) => String(x.status).toUpperCase() === 'OPEN').length,
     ledgerCount: d.ledger.count,
