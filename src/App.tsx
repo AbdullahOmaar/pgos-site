@@ -18,6 +18,7 @@ import Authority from './pages/Authority'
 import Adoption from './pages/Adoption'
 import AskCompany from './pages/AskCompany'
 import Preprod from './pages/Preprod'
+import Dashboard from './pages/Dashboard'
 
 export default function App() {
   return (
@@ -26,6 +27,7 @@ export default function App() {
         <AppShell>
         <Routes>
           <Route path="/" element={<OfficeHome />} />
+          <Route path="/dashboard" element={<Dashboard />} />
           <Route path="/overview" element={<Overview />} />
           <Route path="/projects" element={<Projects />} />
           <Route path="/decisions" element={<Decisions />} />
