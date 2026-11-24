@@ -22,6 +22,7 @@ import Dashboard from './pages/Dashboard'
 import ProjectsV2 from './pages/ProjectsV2'
 import TasksV2 from './pages/TasksV2'
 import DecisionsV2 from './pages/DecisionsV2'
+import PreprodV2 from './pages/PreprodV2'
 
 export default function App() {
   return (
@@ -34,6 +35,7 @@ export default function App() {
           <Route path="/os/projects" element={<ProjectsV2 />} />
           <Route path="/os/tasks" element={<TasksV2 />} />
           <Route path="/os/decisions" element={<DecisionsV2 />} />
+          <Route path="/os/preprod" element={<PreprodV2 />} />
           <Route path="/overview" element={<Overview />} />
           <Route path="/projects" element={<Projects />} />
           <Route path="/decisions" element={<Decisions />} />
