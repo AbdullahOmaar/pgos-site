@@ -58,13 +58,13 @@ export default function Dashboard() {
       </Card>
 
       <div className="grid grid-cols-2 gap-3">
-        <StatCard label="مشاريع" value={d.projects.length} to="/projects" />
+        <StatCard label="مشاريع" value={d.projects.length} to="/os/projects" />
         <StatCard label="مخاطر مفتوحة" value={d.openRisks} to="/risks" />
         <StatCard label="قيود سجل الشركة" value={d.ledgerCount} sub={d.ledgerVerified ? 'السلسلة سليمة ✔' : 'حالة السلسلة غير مؤكدة'} to="/ledger" />
         <StatCard label="تنبيهات الحارس" value={d.guardAlerts} sub={d.guardAlerts === 0 ? 'لا فجوات مؤكدة' : 'فجوات تحتاج متابعة'} to="/completeness" />
       </div>
 
-      <SectionTitle to="/projects">المشاريع ونسبها</SectionTitle>
+      <SectionTitle to="/os/projects">المشاريع ونسبها</SectionTitle>
       {d.projects.length === 0 ? <EmptyState text="لا مشاريع في مصدر البيانات الحالي" /> : (
         <div className="space-y-3">
           {d.projects.map((p) => {
@@ -87,7 +87,7 @@ export default function Dashboard() {
         </div>
       )}
 
-      <SectionTitle to="/tasks">آخر حركة على البنود</SectionTitle>
+      <SectionTitle to="/os/tasks">آخر حركة على البنود</SectionTitle>
       {recent.length === 0 ? <EmptyState text="لا بنود محدثة في مصدر البيانات الحالي" /> : (
         <Card className="p-0">
           <ul className="divide-y divide-border">
