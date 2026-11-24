@@ -2,6 +2,9 @@ import type {
   LiveChecklistItem,
   LiveDecision,
   LiveIssue,
+  LiveNotificationType,
+  LiveOrgDepartment,
+  LiveOrgEmployee,
   LiveProject,
   LiveRelease,
   LiveSyncRun,
@@ -32,6 +35,11 @@ const SELECTS = {
   releases: 'id,name,project_id,status,released_at,description&order=released_at.desc',
   checklist: 'id,check_number,category,title,how_to_verify,project_statuses&order=check_number.asc',
   sync: 'id,started_at,finished_at,status,issues_count&order=started_at.desc&limit=1',
+  orgDepartments: 'id,name,color,description,projects,sort_order&order=sort_order.asc',
+  orgEmployees:
+    'id,name,initial,color,dept_name,role,status,group_name,project_ref&order=sort_order.asc',
+  notificationTypes: 'id,label,description,default_on,active&order=sort_order.asc',
+  notificationPrefs: 'device_id,type_id,enabled',
 } as const
 
 async function getRows<T>(base: string, key: string, table: string, select: string): Promise<T[]> {
@@ -48,7 +56,7 @@ export async function fetchLiveDataset(): Promise<OsDataset> {
   const key = import.meta.env.VITE_SUPABASE_ANON_KEY as string | undefined
   if (!base || !key) throw new Error('live-not-configured')
 
-  const [projects, issues, decisions, releases, checklist, syncRuns] = await Promise.all([
+  const [projects, issues, decisions, releases, checklist, syncRuns, orgDepartments, orgEmployees, notificationTypes, notificationPrefs] = await Promise.all([
     getRows<LiveProject>(base, key, 'pgos_projects', SELECTS.projects),
     getRows<LiveIssue>(base, key, 'pgos_issues', SELECTS.issues),
     getRows<LiveDecision>(base, key, 'pgos_hq_decisions', SELECTS.decisions).catch(() => [] as LiveDecision[]),
@@ -57,6 +65,18 @@ export async function fetchLiveDataset(): Promise<OsDataset> {
       () => [] as LiveChecklistItem[],
     ),
     getRows<LiveSyncRun>(base, key, 'pgos_sync_runs', SELECTS.sync).catch(() => [] as LiveSyncRun[]),
+    getRows<LiveOrgDepartment>(base, key, 'pgos_org_departments', SELECTS.orgDepartments).catch(
+      () => [] as LiveOrgDepartment[],
+    ),
+    getRows<LiveOrgEmployee>(base, key, 'pgos_org_employees', SELECTS.orgEmployees).catch(
+      () => [] as LiveOrgEmployee[],
+    ),
+    getRows<LiveNotificationType>(base, key, 'pgos_notification_types', SELECTS.notificationTypes).catch(
+      () => [] as LiveNotificationType[],
+    ),
+    getRows<{ device_id: string }>(base, key, 'pgos_notification_prefs', SELECTS.notificationPrefs).catch(
+      () => [] as { device_id: string }[],
+    ),
   ])
 
   const lastSync = syncRuns[0] ?? null
@@ -68,6 +88,13 @@ export async function fetchLiveDataset(): Promise<OsDataset> {
     decisions,
     releases,
     checklist,
+    orgDepartments: orgDepartments.map((x) => ({
+      ...x,
+      projects: Array.isArray(x.projects) ? x.projects : [],
+    })),
+    orgEmployees,
+    notificationTypes,
+    notificationPrefsCount: notificationPrefs.length,
     lastSync,
     // المخاطر/السجل/الحارس لسه مش جداول pgos_ حية (M2) — صفر هنا يعني «غير متاح من الحي»،
     // والواجهة عند التبديل لازم تميّز ذلك؛ لا أرقام مخترعة.

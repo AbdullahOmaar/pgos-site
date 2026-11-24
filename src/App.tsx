@@ -23,6 +23,7 @@ import ProjectsV2 from './pages/ProjectsV2'
 import TasksV2 from './pages/TasksV2'
 import DecisionsV2 from './pages/DecisionsV2'
 import PreprodV2 from './pages/PreprodV2'
+import OrgV2 from './pages/OrgV2'
 
 export default function App() {
   return (
@@ -36,6 +37,7 @@ export default function App() {
           <Route path="/os/tasks" element={<TasksV2 />} />
           <Route path="/os/decisions" element={<DecisionsV2 />} />
           <Route path="/os/preprod" element={<PreprodV2 />} />
+          <Route path="/os/org" element={<OrgV2 />} />
           <Route path="/overview" element={<Overview />} />
           <Route path="/projects" element={<Projects />} />
           <Route path="/decisions" element={<Decisions />} />

@@ -70,6 +70,36 @@ export interface LiveChecklistItem {
   project_statuses: Record<string, { status: string; evidence?: string }>
 }
 
+/* جداول M2 (مهاجرة 000004) — تنظيم الشركة الحقيقي، منفصل تمامًا عن طاقم المكتب الافتراضي */
+export interface LiveOrgDepartment {
+  id: string
+  name: string
+  color: string | null
+  description: string | null
+  projects: string[]
+  sort_order: number
+}
+
+export interface LiveOrgEmployee {
+  id: string
+  name: string
+  initial: string | null
+  color: string | null
+  dept_name: string | null
+  role: string | null
+  status: string | null
+  group_name: string | null
+  project_ref: string | null
+}
+
+export interface LiveNotificationType {
+  id: string
+  label: string
+  description: string | null
+  default_on: boolean
+  active: boolean
+}
+
 export type DataSourceKind = 'live' | 'snapshot' | 'unavailable'
 
 export interface OsDataset {
@@ -80,6 +110,10 @@ export interface OsDataset {
   decisions: LiveDecision[]
   releases: LiveRelease[]
   checklist: LiveChecklistItem[]
+  orgDepartments: LiveOrgDepartment[]
+  orgEmployees: LiveOrgEmployee[]
+  notificationTypes: LiveNotificationType[]
+  notificationPrefsCount: number
   lastSync: LiveSyncRun | null
   openRisks: number
   ledgerCount: number

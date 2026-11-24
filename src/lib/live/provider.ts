@@ -73,6 +73,12 @@ function fromSnapshot(d: SiteData): OsDataset {
         pgos_site: { status: c.apps.pgos.status },
       },
     })),
+    // بيانات M2 (تنظيم/إشعارات) مش موجودة في لقطة الخزنة — فاضية هنا بصدق،
+    // وبتتملي من المحوّل الحي بس. ممنوع ملؤها من بذرة المكتب الافتراضي (طاقم مختلف).
+    orgDepartments: [],
+    orgEmployees: [],
+    notificationTypes: [],
+    notificationPrefsCount: 0,
     lastSync: null,
     openRisks: d.records.risks.filter((x) => String(x.status).toUpperCase() === 'OPEN').length,
     ledgerCount: d.ledger.count,
