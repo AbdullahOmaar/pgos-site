@@ -1,6 +1,7 @@
 import { BrowserRouter, Route, Routes } from 'react-router-dom'
 import AppShell from './components/AppShell'
 import VaultGate from './components/VaultGate'
+import OfficeHome from './pages/OfficeHome'
 import Overview from './pages/Overview'
 import Projects from './pages/Projects'
 import Decisions from './pages/Decisions'
@@ -24,7 +25,8 @@ export default function App() {
       <VaultGate>
         <AppShell>
         <Routes>
-          <Route path="/" element={<Overview />} />
+          <Route path="/" element={<OfficeHome />} />
+          <Route path="/overview" element={<Overview />} />
           <Route path="/projects" element={<Projects />} />
           <Route path="/decisions" element={<Decisions />} />
           <Route path="/work-orders" element={<WorkOrders />} />

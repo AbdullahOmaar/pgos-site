@@ -2,7 +2,8 @@ import { useEffect, useState, type ReactNode } from 'react'
 import { NavLink } from 'react-router-dom'
 
 const LINKS = [
-  { to: '/', label: 'نظرة عامة', icon: '🏠' },
+  { to: '/', label: 'المقر الافتراضي', icon: '🏢' },
+  { to: '/overview', label: 'نظرة عامة', icon: '🏠' },
   { to: '/projects', label: 'المشاريع', icon: '🗂️' },
   { to: '/decisions', label: 'القرارات', icon: '⚖️' },
   { to: '/work-orders', label: 'أوامر الشغل', icon: '📋' },
