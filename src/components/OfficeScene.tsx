@@ -1,6 +1,7 @@
 import { useEffect, useRef } from 'react'
 import * as THREE from 'three'
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js'
+import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js'
 import type { OfficeData } from '../office/types'
 import { computeLayout } from '../office/layout'
 import { buildOfficeScene, type BuiltOffice } from '../office/scene'
@@ -49,22 +50,27 @@ export default function OfficeScene({ data, selectedId, onSelect }: Props) {
     renderer.shadowMap.type = THREE.PCFSoftShadowMap
     renderer.outputColorSpace = THREE.SRGBColorSpace
     renderer.toneMapping = THREE.ACESFilmicToneMapping
-    renderer.toneMappingExposure = 1.05
+    renderer.toneMappingExposure = 1.18
     mount.appendChild(renderer.domElement)
 
     const scene = new THREE.Scene()
+    /* بيئة إضاءة إجرائية — بتدي الزجاج والمعدن والخشب انعكاسات غنية زي الرندر */
+    const pmrem = new THREE.PMREMGenerator(renderer)
+    const envTex = pmrem.fromScene(new RoomEnvironment(), 0.04).texture
+    scene.environment = envTex
+    ;(scene as unknown as { environmentIntensity?: number }).environmentIntensity = 0.5
     const camera = new THREE.PerspectiveCamera(38, 1, 0.1, 400)
 
-    const hemi = new THREE.HemisphereLight(0xcfe4ff, 0x2a3450, 1.25)
+    const hemi = new THREE.HemisphereLight(0xd8ecff, 0x3a2f22, 1.35)
     scene.add(hemi)
-    scene.add(new THREE.AmbientLight(0xffe8c4, 0.22))
-    const dirLight = new THREE.DirectionalLight(0xfff1d6, 1.85)
+    scene.add(new THREE.AmbientLight(0xffe8c4, 0.3))
+    const dirLight = new THREE.DirectionalLight(0xfff1d6, 2.05)
     dirLight.position.set(16, 26, 10)
     dirLight.castShadow = true
     dirLight.shadow.mapSize.set(2048, 2048)
     dirLight.shadow.bias = -0.0004
     scene.add(dirLight)
-    const fill = new THREE.DirectionalLight(0x88aaff, 0.35)
+    const fill = new THREE.DirectionalLight(0xffe2b8, 0.55)
     fill.position.set(-14, 10, -16)
     scene.add(fill)
 
@@ -187,6 +193,8 @@ export default function OfficeScene({ data, selectedId, onSelect }: Props) {
       }
       ring.geometry.dispose()
       ;(ring.material as THREE.Material).dispose()
+      envTex.dispose()
+      pmrem.dispose()
       renderer.dispose()
       mount.removeChild(renderer.domElement)
       rtRef.current = null
