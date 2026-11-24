@@ -55,9 +55,10 @@ export default function OfficeScene({ data, selectedId, onSelect }: Props) {
     const scene = new THREE.Scene()
     const camera = new THREE.PerspectiveCamera(38, 1, 0.1, 400)
 
-    const hemi = new THREE.HemisphereLight(0xcfe4ff, 0x1a2440, 0.85)
+    const hemi = new THREE.HemisphereLight(0xcfe4ff, 0x2a3450, 1.25)
     scene.add(hemi)
-    const dirLight = new THREE.DirectionalLight(0xfff1d6, 1.6)
+    scene.add(new THREE.AmbientLight(0xffe8c4, 0.22))
+    const dirLight = new THREE.DirectionalLight(0xfff1d6, 1.85)
     dirLight.position.set(16, 26, 10)
     dirLight.castShadow = true
     dirLight.shadow.mapSize.set(2048, 2048)
@@ -152,6 +153,8 @@ export default function OfficeScene({ data, selectedId, onSelect }: Props) {
       if (w === 0 || h === 0) return
       renderer.setSize(w, h)
       camera.aspect = w / h
+      /* موبايل portrait: بنوسّع زاوية الرؤية رأسيًا علشان المقر كله يبان من غير قصّ أفقي */
+      camera.fov = camera.aspect < 1 ? Math.min(38 / Math.max(camera.aspect, 0.5), 74) : 38
       camera.updateProjectionMatrix()
     }
     resize()

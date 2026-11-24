@@ -172,8 +172,8 @@ const NAVY = 0x0a2342
 const FRAME = 0x16294d
 const CYAN = 0x00d2ff
 const AMBER = 0xffa726
-const WOOD = 0x9a7448
-const WOOD_DARK = 0x77572f
+const WOOD = 0xb08a58
+const WOOD_DARK = 0x8a6844
 
 const SHIRT_COLORS = [0x3b3fa3, 0x0e7490, 0xb45309, 0x7c2d4e, 0x475569, 0x4d7c0f, 0x6d28d9, 0x0f766e]
 const SKIN_COLORS = [0xf2c9a0, 0xe0ac82, 0xc68863, 0x9c6644, 0xf7d7b5]
@@ -216,7 +216,7 @@ function makeShared(): Shared {
     woodMat: new THREE.MeshStandardMaterial({ color: WOOD, roughness: 0.75 }),
     woodDarkMat: new THREE.MeshStandardMaterial({ color: WOOD_DARK, roughness: 0.8 }),
     darkScreenMat: new THREE.MeshStandardMaterial({ color: 0x0b1220, roughness: 0.35, metalness: 0.4 }),
-    chairMat: new THREE.MeshStandardMaterial({ color: 0x27324e, roughness: 0.85 }),
+    chairMat: new THREE.MeshStandardMaterial({ color: 0x3a4c74, roughness: 0.85 }),
     metalMat: new THREE.MeshStandardMaterial({ color: 0x8d99ae, roughness: 0.3, metalness: 0.85 }),
   }
 }
@@ -484,7 +484,7 @@ function makeRoom(
   const accent = new THREE.Color(room.department.color)
 
   // أرضية خشبية دافئة مموّجة بلون القسم
-  const floorMat = new THREE.MeshStandardMaterial({ color: 0xc9a06b, roughness: 0.8 })
+  const floorMat = new THREE.MeshStandardMaterial({ color: 0xdbb87f, roughness: 0.8 })
   floorMat.color.lerp(accent, 0.12)
   const floor = box(sh, floorMat, w, 0.12, d, 0, 0.06, 0)
   g.add(floor)
@@ -574,6 +574,11 @@ function makeRoom(
     g.add(glow)
   }
 
+  // إضاءة داخلية دافئة — بتدي إحساس الجولة ٢ (لمبات كهرمانية فوق خشب دافئ)
+  const innerLight = new THREE.PointLight(0xffd9a0, 14, Math.max(w, d) * 1.7, 1.8)
+  innerLight.position.set(0, 2.1, 0.2)
+  g.add(innerLight)
+
   // نباتات في الأركان الأمامية
   for (const s of [-1, 1]) {
     const plant = makePlant(rand, 0.95 + rand() * 0.4)
@@ -622,7 +627,7 @@ function makePlaza(sh: Shared, layout: OfficeLayout): THREE.Group {
   const reception = new THREE.Group()
   const counter = new THREE.Mesh(
     new THREE.CylinderGeometry(1.7, 1.7, 0.98, 28, 1, false, -Math.PI / 3, (Math.PI * 2) / 3),
-    sh.metalMat,
+    new THREE.MeshStandardMaterial({ color: 0x2b4a7f, roughness: 0.32, metalness: 0.7 }),
   )
   counter.position.y = 0.49
   counter.castShadow = true
