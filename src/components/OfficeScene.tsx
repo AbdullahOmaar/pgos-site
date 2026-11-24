@@ -2,9 +2,14 @@ import { useEffect, useRef } from 'react'
 import * as THREE from 'three'
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js'
 import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js'
+import { EffectComposer } from 'three/addons/postprocessing/EffectComposer.js'
+import { RenderPass } from 'three/addons/postprocessing/RenderPass.js'
+import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js'
+import { OutputPass } from 'three/addons/postprocessing/OutputPass.js'
 import type { OfficeData } from '../office/types'
 import { computeLayout } from '../office/layout'
 import { buildOfficeScene, type BuiltOffice } from '../office/scene'
+import { loadOfficeAssets, type OfficeAssets } from '../office/assets'
 
 /*
  * غلاف React حول مشهد المقر ثلاثي الأبعاد.
@@ -21,10 +26,13 @@ interface Props {
 
 interface Runtime {
   renderer: THREE.WebGLRenderer
+  composer: EffectComposer
   scene: THREE.Scene
   camera: THREE.PerspectiveCamera
   controls: OrbitControls
   built: BuiltOffice | null
+  /** أصول GLTF (شخصيات/أثاث) — بتتحمل مرة واحدة وبعدين المشهد بيتبني بيها */
+  assets: OfficeAssets | null
   ring: THREE.Mesh
   dirLight: THREE.DirectionalLight
   lastExtent: number
@@ -45,7 +53,12 @@ export default function OfficeScene({ data, selectedId, onSelect }: Props) {
     if (!mount) return
 
     const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true })
-    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2))
+    /* سقف نسبة البكسل أخف على الشاشات الصغيرة — قيد أداء موبايل حقيقي */
+    const pixelRatio = Math.min(
+      window.devicePixelRatio,
+      window.innerWidth < 640 ? 1.6 : 2,
+    )
+    renderer.setPixelRatio(pixelRatio)
     renderer.shadowMap.enabled = true
     renderer.shadowMap.type = THREE.PCFSoftShadowMap
     renderer.outputColorSpace = THREE.SRGBColorSpace
@@ -69,7 +82,21 @@ export default function OfficeScene({ data, selectedId, onSelect }: Props) {
     dirLight.castShadow = true
     dirLight.shadow.mapSize.set(2048, 2048)
     dirLight.shadow.bias = -0.0004
+    dirLight.shadow.normalBias = 0.03
     scene.add(dirLight)
+
+    /*
+     * معالجة لاحقة سينمائية خفيفة (جولة الجودة ٣): Bloom خفيف على اللمعات
+     * السماوية واللمبات بس (عتبة عالية) + OutputPass للـtone mapping.
+     * GTAO/SSAO اترفضت بوعي: تكلفتها على موبايل حقيقي عالية، وبديلها عندنا
+     * ظلال تلامس مرسومة في المشهد نفسه (blob shadows) + ظلال PCFSoft أعمق.
+     */
+    const composer = new EffectComposer(renderer)
+    composer.setPixelRatio(pixelRatio)
+    composer.addPass(new RenderPass(scene, camera))
+    const bloom = new UnrealBloomPass(new THREE.Vector2(1, 1), 0.2, 0.35, 1.6)
+    composer.addPass(bloom)
+    composer.addPass(new OutputPass())
     const fill = new THREE.DirectionalLight(0xffe2b8, 0.55)
     fill.position.set(-14, 10, -16)
     scene.add(fill)
@@ -94,8 +121,8 @@ export default function OfficeScene({ data, selectedId, onSelect }: Props) {
     controls.target.set(0, 0.4, 0)
 
     const rt: Runtime = {
-      renderer, scene, camera, controls,
-      built: null, ring, dirLight, lastExtent: 0, raf: 0,
+      renderer, composer, scene, camera, controls,
+      built: null, assets: null, ring, dirLight, lastExtent: 0, raf: 0,
     }
     rtRef.current = rt
 
@@ -121,7 +148,7 @@ export default function OfficeScene({ data, selectedId, onSelect }: Props) {
         scene.remove(rt.built.group)
         rt.built.dispose()
       }
-      const built = buildOfficeScene(layout)
+      const built = buildOfficeScene(layout, rt.assets)
       rt.built = built
       scene.add(built.group)
       if (Math.abs(layout.extent - rt.lastExtent) > 0.01) {
@@ -130,6 +157,19 @@ export default function OfficeScene({ data, selectedId, onSelect }: Props) {
       }
     }
     rebuild()
+    /*
+     * أصول الشخصيات/الأثاث بتتحمل في الخلفية: أول بناء بيطلع فورًا بالاحتياطي
+     * الإجرائي، ولما الأصول تجهز المشهد بيتبني من جديد بيها. فشل التحميل
+     * بيخلّي الاحتياطي شغال — الصفحة ما بتقعش أبدًا علشان أصل خارجي.
+     */
+    let cancelled = false
+    loadOfficeAssets()
+      .then((assets) => {
+        if (cancelled) return
+        rt.assets = assets
+        rebuild()
+      })
+      .catch(() => { /* الاحتياطي الإجرائي بيكمّل */ })
 
     /* اختيار باللمس/النقر — بنفرّق بين السحب للنقر بمسافة الحركة */
     const raycaster = new THREE.Raycaster()
@@ -158,6 +198,7 @@ export default function OfficeScene({ data, selectedId, onSelect }: Props) {
       const h = mount.clientHeight
       if (w === 0 || h === 0) return
       renderer.setSize(w, h)
+      composer.setSize(w, h)
       camera.aspect = w / h
       /* موبايل portrait: بنوسّع زاوية الرؤية رأسيًا علشان المقر كله يبان من غير قصّ أفقي */
       camera.fov = camera.aspect < 1 ? Math.min(38 / Math.max(camera.aspect, 0.5), 74) : 38
@@ -177,11 +218,12 @@ export default function OfficeScene({ data, selectedId, onSelect }: Props) {
         ring.scale.set(s, s, 1)
       }
       controls.update()
-      renderer.render(scene, camera)
+      composer.render()
     }
     loop()
 
     return () => {
+      cancelled = true
       cancelAnimationFrame(rt.raf)
       ro.disconnect()
       renderer.domElement.removeEventListener('pointerdown', onDown)
@@ -193,6 +235,8 @@ export default function OfficeScene({ data, selectedId, onSelect }: Props) {
       }
       ring.geometry.dispose()
       ;(ring.material as THREE.Material).dispose()
+      bloom.dispose()
+      composer.dispose()
       envTex.dispose()
       pmrem.dispose()
       renderer.dispose()
@@ -210,7 +254,7 @@ export default function OfficeScene({ data, selectedId, onSelect }: Props) {
       rt.scene.remove(rt.built.group)
       rt.built.dispose()
     }
-    const built = buildOfficeScene(layout)
+    const built = buildOfficeScene(layout, rt.assets)
     rt.built = built
     rt.scene.add(built.group)
     if (Math.abs(layout.extent - rt.lastExtent) > 0.01) {

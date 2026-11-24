@@ -1,6 +1,13 @@
 import * as THREE from 'three'
 import type { OfficeLayout, RoomLayout } from './layout'
 import type { Employee } from './types'
+import {
+  createCharacter,
+  cloneKenney,
+  setLampLit,
+  type CharacterRig,
+  type OfficeAssets,
+} from './assets'
 
 /*
  * باني المشهد — بيحوّل التخطيط المحسوب من البيانات لمشهد Three.js.
@@ -523,6 +530,18 @@ function makeGlowTexture(): THREE.Texture {
   })
 }
 
+/** تدرّج ظل تلامس ناعم — بديل AO آمن للأداء (جولة الجودة ٣) */
+function makeBlobTexture(): THREE.Texture {
+  return canvasTexture(128, 128, (g) => {
+    const grad = g.createRadialGradient(64, 64, 4, 64, 64, 62)
+    grad.addColorStop(0, 'rgba(4,10,24,0.62)')
+    grad.addColorStop(0.55, 'rgba(4,10,24,0.30)')
+    grad.addColorStop(1, 'rgba(4,10,24,0)')
+    g.fillStyle = grad
+    g.fillRect(0, 0, 128, 128)
+  })
+}
+
 /** شارة اسم عائمة (نص عربي على كبسولة كحلية) */
 function makeLabelSprite(text: string, accent: string): THREE.Sprite {
   const pad = 30
@@ -582,6 +601,8 @@ interface Shared {
   tileTex: THREE.Texture
   zzzTex: THREE.Texture
   glowTex: THREE.Texture
+  blobTex: THREE.Texture
+  blobGeo: THREE.PlaneGeometry
   /** تكسشرز منسوخة لكل غرفة — بتتخلص مع المشهد */
   extraTextures: THREE.Texture[]
   glassMat: THREE.MeshStandardMaterial
@@ -612,6 +633,8 @@ function makeShared(): Shared {
     tileTex: makeTileTexture(),
     zzzTex: makeZzzTexture(),
     glowTex: makeGlowTexture(),
+    blobTex: makeBlobTexture(),
+    blobGeo: new THREE.PlaneGeometry(1, 1),
     extraTextures: [],
     glassMat: new THREE.MeshStandardMaterial({
       color: 0xbfdcf2,
@@ -659,6 +682,26 @@ function box(
   m.position.set(x, y, z)
   m.castShadow = true
   m.receiveShadow = true
+  return m
+}
+
+/**
+ * ظل تلامس ناعم تحت عنصر — بيأرضي العناصر بصريًا (AO بديل رخيص):
+ * سطح شفاف بتدرّج داكن، بلا أي تكلفة إضاءة أو بوست-بروسيسنج.
+ */
+function blobShadow(sh: Shared, w: number, d: number, opacity: number): THREE.Mesh {
+  const m = new THREE.Mesh(
+    sh.blobGeo,
+    new THREE.MeshBasicMaterial({
+      map: sh.blobTex,
+      transparent: true,
+      opacity,
+      depthWrite: false,
+    }),
+  )
+  m.rotation.x = -Math.PI / 2
+  m.scale.set(w, d, 1)
+  m.renderOrder = 1
   return m
 }
 
@@ -917,18 +960,25 @@ function makeFigure(seedKey: string, opts: FigureOpts = {}): Figure {
 
 /* ---------- محطة عمل (مكتب + شاشات + كرسي + موظف + إكسسوارات) ---------- */
 interface Animator {
-  kind: 'working' | 'idle-zzz' | 'screen'
+  kind: 'working' | 'idle-zzz' | 'screen' | 'gltf'
   obj: THREE.Object3D
   phase: number
   baseY: number
   mat?: THREE.MeshStandardMaterial
   spriteMat?: THREE.SpriteMaterial
+  rig?: CharacterRig
 }
+
+/** ارتفاع سطح مكتب Kenney بعد التكبير الموحّد (0.384 × 2) */
+const DESK_TOP = 0.768
+/** ألوان شعر الشخصيات الحقيقية — بتتضرب فوق تكسشر الشعر الفاتح */
+const CHAR_HAIR_COLORS = [0x2a2019, 0x4a3220, 0x6e4525, 0x8a6844, 0x9a7a5c, 0x1a1a1e]
 
 function makeDesk(
   sh: Shared,
   employee: Employee,
   animators: Animator[],
+  assets: OfficeAssets | null,
 ): { group: THREE.Group; pick: THREE.Object3D[] } {
   const g = new THREE.Group()
   const pick: THREE.Object3D[] = []
@@ -936,41 +986,30 @@ function makeDesk(
   const phase = rand() * Math.PI * 2
   const status = employee.status
 
-  // سطح المكتب وأرجله
-  g.add(box(sh, sh.woodMat, 1.7, 0.06, 0.85, 0, 0.74, 0))
-  g.add(box(sh, sh.woodDarkMat, 0.06, 0.72, 0.8, -0.8, 0.37, 0))
-  g.add(box(sh, sh.woodDarkMat, 0.06, 0.72, 0.8, 0.8, 0.37, 0))
-  g.add(box(sh, sh.woodDarkMat, 0.5, 0.34, 0.7, 0.52, 0.53, 0)) // وحدة أدراج
-  // لوحة مفاتيح + ماوس
-  g.add(box(sh, sh.darkScreenMat, 0.46, 0.025, 0.17, 0, 0.785, 0.08))
-  const mouse = new THREE.Mesh(new THREE.SphereGeometry(0.045, 10, 8), sh.darkScreenMat)
-  mouse.scale.set(1, 0.5, 1.5)
-  mouse.position.set(0.33, 0.785, 0.09)
-  g.add(mouse)
+  // ظل تلامس تحت محطة العمل كلها — تأريض بصري (AO بديل)
+  const deskBlob = blobShadow(sh, 2.5, 2.1, 0.5)
+  deskBlob.position.set(0, 0.03, 0.18)
+  g.add(deskBlob)
 
-  // شاشتان — لكل شاشة محتوى مختلف من الأنواع الأربعة
-  // إطار الشغال له توهج خلفي خفيف علشان حالة الشغل تبان من أي زاوية مش من وش الشاشة بس
-  const frameMat =
-    status === 'working'
-      ? new THREE.MeshStandardMaterial({
-          color: 0x0e1626,
-          roughness: 0.35,
-          metalness: 0.4,
-          emissive: 0x17456e,
-          emissiveIntensity: 0.85,
-          envMapIntensity: 1.1,
-        })
-      : sh.darkScreenMat
-  const variant = Math.floor(rand() * sh.screenTexs.length)
-  for (const [i, dx] of [-0.34, 0.34].entries()) {
-    const stand = box(sh, sh.darkScreenMat, 0.07, 0.3, 0.07, dx, 0.92, -0.26)
-    g.add(stand)
-    const frame = box(sh, frameMat, 0.66, 0.42, 0.035, dx, 1.16, -0.26)
-    frame.rotation.y = dx < 0 ? 0.14 : -0.14
-    g.add(frame)
+  if (assets) {
+    /* ===== محطة Kenney + شاشات بمحتوى (جولة دمج الشخصيات) ===== */
+    const ws = new THREE.Group()
+    ws.position.set(0, 0, -0.02)
+    g.add(ws)
+
+    const desk = cloneKenney(assets, 'desk')
+    desk.position.set(0, 0, -0.08)
+    ws.add(desk)
+
+    const chair = cloneKenney(assets, 'chair')
+    chair.position.set(0, 0, 0.74)
+    chair.rotation.y = status === 'offline' ? Math.PI + 0.7 : Math.PI
+    ws.add(chair)
+
+    // شاشتان Kenney — ووش محتوى مركّب كابن للشاشة علشان يلف معاها
     let screenMat: THREE.MeshStandardMaterial
     if (status === 'working') {
-      const tex = sh.screenTexs[(variant + i) % sh.screenTexs.length]
+      const tex = sh.screenTexs[Math.floor(rand() * sh.screenTexs.length)]
       screenMat = new THREE.MeshStandardMaterial({
         map: tex,
         emissive: 0xffffff,
@@ -978,54 +1017,162 @@ function makeDesk(
         emissiveIntensity: 1.15,
         roughness: 0.4,
       })
-      animators.push({ kind: 'screen', obj: frame, phase: phase + i, baseY: 0, mat: screenMat })
+      animators.push({ kind: 'screen', obj: g, phase, baseY: 0, mat: screenMat })
     } else if (status === 'idle') {
       screenMat = sh.idleScreenMat
     } else {
       screenMat = sh.darkScreenMat
     }
-    const screen = new THREE.Mesh(new THREE.PlaneGeometry(0.6, 0.36), screenMat)
-    screen.position.set(dx, 1.16, -0.24)
-    screen.rotation.y = dx < 0 ? 0.14 : -0.14
-    g.add(screen)
-  }
+    for (const dx of [-0.34, 0.34]) {
+      const scr = cloneKenney(assets, 'screen')
+      scr.position.set(dx, DESK_TOP, -0.36)
+      scr.rotation.y = dx < 0 ? 0.14 : -0.14
+      const plane = new THREE.Mesh(new THREE.PlaneGeometry(0.347, 0.221), screenMat)
+      plane.position.set(0, 0.147, 0.0545)
+      scr.add(plane)
+      ws.add(scr)
+    }
 
-  // لمبة مكتب كهرمانية — منورة للشغال بس
-  const lampBase = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.075, 0.03, 10), sh.metalMat)
-  lampBase.position.set(-0.68, 0.785, -0.18)
-  g.add(lampBase)
-  const lampArm = new THREE.Mesh(new THREE.CylinderGeometry(0.016, 0.016, 0.42, 6), sh.metalMat)
-  lampArm.position.set(-0.68, 0.98, -0.18)
-  lampArm.rotation.z = 0.5
-  g.add(lampArm)
-  const lampHead = new THREE.Mesh(
-    new THREE.ConeGeometry(0.085, 0.12, 12, 1, true),
-    new THREE.MeshStandardMaterial({
-      color: 0x8a5a17,
-      emissive: status === 'working' ? AMBER : 0x000000,
-      emissiveIntensity: status === 'working' ? 1.6 : 0,
-      roughness: 0.4,
-      metalness: 0.6,
-      side: THREE.DoubleSide,
-    }),
-  )
-  lampHead.position.set(-0.57, 1.16, -0.18)
-  lampHead.rotation.z = 0.7
-  g.add(lampHead)
-  if (status === 'working') {
-    const glow = new THREE.Sprite(
-      new THREE.SpriteMaterial({
-        map: sh.glowTex,
-        color: AMBER,
-        transparent: true,
-        opacity: 0.5,
-        depthWrite: false,
-        blending: THREE.AdditiveBlending,
+    const kb = cloneKenney(assets, 'keyboard')
+    kb.position.set(0, DESK_TOP, 0.16)
+    ws.add(kb)
+    const mouseK = cloneKenney(assets, 'mouse')
+    mouseK.position.set(0.42, DESK_TOP, 0.16)
+    ws.add(mouseK)
+
+    const lamp = cloneKenney(assets, 'lamp')
+    lamp.position.set(-0.58, DESK_TOP, -0.22)
+    setLampLit(lamp, assets, status === 'working')
+    ws.add(lamp)
+    if (status === 'working') {
+      const glow = new THREE.Sprite(
+        new THREE.SpriteMaterial({
+          map: sh.glowTex,
+          color: AMBER,
+          transparent: true,
+          opacity: 0.5,
+          depthWrite: false,
+          blending: THREE.AdditiveBlending,
+        }),
+      )
+      glow.scale.set(0.55, 0.55, 1)
+      glow.position.set(-0.58, DESK_TOP + 0.5, -0.18)
+      ws.add(glow)
+    }
+
+    const plantK = cloneKenney(assets, 'plant')
+    plantK.position.set(0.58, DESK_TOP, -0.26)
+    ws.add(plantK)
+  } else {
+    /* ===== المحطة الإجرائية الأصلية — احتياطي لو الأصول ما اتحملتش ===== */
+    // سطح المكتب وأرجله
+    g.add(box(sh, sh.woodMat, 1.7, 0.06, 0.85, 0, 0.74, 0))
+    g.add(box(sh, sh.woodDarkMat, 0.06, 0.72, 0.8, -0.8, 0.37, 0))
+    g.add(box(sh, sh.woodDarkMat, 0.06, 0.72, 0.8, 0.8, 0.37, 0))
+    g.add(box(sh, sh.woodDarkMat, 0.5, 0.34, 0.7, 0.52, 0.53, 0)) // وحدة أدراج
+    // لوحة مفاتيح + ماوس
+    g.add(box(sh, sh.darkScreenMat, 0.46, 0.025, 0.17, 0, 0.785, 0.08))
+    const mouse = new THREE.Mesh(new THREE.SphereGeometry(0.045, 10, 8), sh.darkScreenMat)
+    mouse.scale.set(1, 0.5, 1.5)
+    mouse.position.set(0.33, 0.785, 0.09)
+    g.add(mouse)
+
+    // شاشتان — لكل شاشة محتوى مختلف من الأنواع الأربعة
+    const frameMat =
+      status === 'working'
+        ? new THREE.MeshStandardMaterial({
+            color: 0x0e1626,
+            roughness: 0.35,
+            metalness: 0.4,
+            emissive: 0x17456e,
+            emissiveIntensity: 0.85,
+            envMapIntensity: 1.1,
+          })
+        : sh.darkScreenMat
+    const variant = Math.floor(rand() * sh.screenTexs.length)
+    for (const [i, dx] of [-0.34, 0.34].entries()) {
+      const stand = box(sh, sh.darkScreenMat, 0.07, 0.3, 0.07, dx, 0.92, -0.26)
+      g.add(stand)
+      const frame = box(sh, frameMat, 0.66, 0.42, 0.035, dx, 1.16, -0.26)
+      frame.rotation.y = dx < 0 ? 0.14 : -0.14
+      g.add(frame)
+      let screenMat: THREE.MeshStandardMaterial
+      if (status === 'working') {
+        const tex = sh.screenTexs[(variant + i) % sh.screenTexs.length]
+        screenMat = new THREE.MeshStandardMaterial({
+          map: tex,
+          emissive: 0xffffff,
+          emissiveMap: tex,
+          emissiveIntensity: 1.15,
+          roughness: 0.4,
+        })
+        animators.push({ kind: 'screen', obj: frame, phase: phase + i, baseY: 0, mat: screenMat })
+      } else if (status === 'idle') {
+        screenMat = sh.idleScreenMat
+      } else {
+        screenMat = sh.darkScreenMat
+      }
+      const screen = new THREE.Mesh(new THREE.PlaneGeometry(0.6, 0.36), screenMat)
+      screen.position.set(dx, 1.16, -0.24)
+      screen.rotation.y = dx < 0 ? 0.14 : -0.14
+      g.add(screen)
+    }
+
+    // لمبة مكتب كهرمانية — منورة للشغال بس
+    const lampBase = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.075, 0.03, 10), sh.metalMat)
+    lampBase.position.set(-0.68, 0.785, -0.18)
+    g.add(lampBase)
+    const lampArm = new THREE.Mesh(new THREE.CylinderGeometry(0.016, 0.016, 0.42, 6), sh.metalMat)
+    lampArm.position.set(-0.68, 0.98, -0.18)
+    lampArm.rotation.z = 0.5
+    g.add(lampArm)
+    const lampHead = new THREE.Mesh(
+      new THREE.ConeGeometry(0.085, 0.12, 12, 1, true),
+      new THREE.MeshStandardMaterial({
+        color: 0x8a5a17,
+        emissive: status === 'working' ? AMBER : 0x000000,
+        emissiveIntensity: status === 'working' ? 1.6 : 0,
+        roughness: 0.4,
+        metalness: 0.6,
+        side: THREE.DoubleSide,
       }),
     )
-    glow.scale.set(0.55, 0.55, 1)
-    glow.position.set(-0.55, 1.13, -0.16)
-    g.add(glow)
+    lampHead.position.set(-0.57, 1.16, -0.18)
+    lampHead.rotation.z = 0.7
+    g.add(lampHead)
+    if (status === 'working') {
+      const glow = new THREE.Sprite(
+        new THREE.SpriteMaterial({
+          map: sh.glowTex,
+          color: AMBER,
+          transparent: true,
+          opacity: 0.5,
+          depthWrite: false,
+          blending: THREE.AdditiveBlending,
+        }),
+      )
+      glow.scale.set(0.55, 0.55, 1)
+      glow.position.set(-0.55, 1.13, -0.16)
+      g.add(glow)
+    }
+
+    // كرسي بمساند
+    const chair = new THREE.Group()
+    chair.position.set(0, 0, 0.52)
+    if (status === 'offline') chair.rotation.y = 0.7
+    chair.add(box(sh, sh.chairMat, 0.52, 0.07, 0.5, 0, 0.46, 0))
+    chair.add(box(sh, sh.chairMat, 0.52, 0.6, 0.07, 0, 0.78, 0.26))
+    for (const dx of [-0.29, 0.29]) {
+      chair.add(box(sh, sh.chairMat, 0.05, 0.16, 0.05, dx, 0.55, 0.02))
+      chair.add(box(sh, sh.chairMat, 0.06, 0.045, 0.34, dx, 0.64, 0.02))
+    }
+    const post = new THREE.Mesh(new THREE.CylinderGeometry(0.035, 0.035, 0.42, 8), sh.metalMat)
+    post.position.y = 0.22
+    chair.add(post)
+    const base = new THREE.Mesh(new THREE.CylinderGeometry(0.26, 0.28, 0.035, 12), sh.darkScreenMat)
+    base.position.y = 0.02
+    chair.add(base)
+    g.add(chair)
   }
 
   /* إكسسوارات مكتب — حياة صغيرة بتتوزع بالبذرة (مش كل مكتب زي التاني) */
@@ -1104,26 +1251,31 @@ function makeDesk(
     g.add(tower)
   }
 
-  // كرسي بمساند
-  const chair = new THREE.Group()
-  chair.position.set(0, 0, 0.52)
-  if (status === 'offline') chair.rotation.y = 0.7
-  chair.add(box(sh, sh.chairMat, 0.52, 0.07, 0.5, 0, 0.46, 0))
-  chair.add(box(sh, sh.chairMat, 0.52, 0.6, 0.07, 0, 0.78, 0.26))
-  for (const dx of [-0.29, 0.29]) {
-    chair.add(box(sh, sh.chairMat, 0.05, 0.16, 0.05, dx, 0.55, 0.02))
-    chair.add(box(sh, sh.chairMat, 0.06, 0.045, 0.34, dx, 0.64, 0.02))
-  }
-  const post = new THREE.Mesh(new THREE.CylinderGeometry(0.035, 0.035, 0.42, 8), sh.metalMat)
-  post.position.y = 0.22
-  chair.add(post)
-  const base = new THREE.Mesh(new THREE.CylinderGeometry(0.26, 0.28, 0.035, 12), sh.darkScreenMat)
-  base.position.y = 0.02
-  chair.add(base)
-  g.add(chair)
-
   // الموظف نفسه (مش موجود لو غير متصل)
-  if (status !== 'offline') {
+  if (status !== 'offline' && assets) {
+    // شخصية حقيقية (Quaternius) — ملابسها مرسومة على تكسشر الجسم
+    const rig = createCharacter(assets, {
+      body: rand() < 0.5 ? 'male' : 'female',
+      variant: Math.floor(rand() * 6),
+      hairColor: CHAR_HAIR_COLORS[Math.floor(rand() * CHAR_HAIR_COLORS.length)],
+      mode: status === 'working' ? 'work' : 'idle',
+    })
+    rig.group.position.set(0, 0, 0.78)
+    rig.group.rotation.y = Math.PI // وشه للمكتب والشاشات (-z)
+    g.add(rig.group)
+    if (status === 'working' && rig.animate) {
+      animators.push({ kind: 'gltf', obj: rig.group, phase, baseY: 0, rig })
+    }
+    if (status === 'idle') {
+      const zzz = new THREE.Sprite(
+        new THREE.SpriteMaterial({ map: sh.zzzTex, transparent: true, opacity: 0, depthWrite: false }),
+      )
+      zzz.scale.set(0.6, 0.6, 1)
+      zzz.position.set(0.3, 1.32, 0.3)
+      g.add(zzz)
+      animators.push({ kind: 'idle-zzz', obj: zzz, phase: rand(), baseY: 1.32, spriteMat: zzz.material as THREE.SpriteMaterial })
+    }
+  } else if (status !== 'offline') {
     const fig = makeFigure(employee.id)
     fig.group.position.set(0, 0, 0.52)
     if (status === 'idle') {
@@ -1163,6 +1315,7 @@ function makeRoom(
   animators: Animator[],
   pickables: THREE.Object3D[],
   anchors: Map<string, THREE.Object3D>,
+  assets: OfficeAssets | null,
 ): THREE.Group {
   const g = new THREE.Group()
   g.position.set(room.cx, 0, room.cz)
@@ -1364,7 +1517,7 @@ function makeRoom(
 
   // محطات العمل من التخطيط
   for (const desk of room.desks) {
-    const built = makeDesk(sh, desk.employee, animators)
+    const built = makeDesk(sh, desk.employee, animators, assets)
     built.group.position.set(desk.x, 0.12, desk.z)
     g.add(built.group)
     pickables.push(...built.pick)
@@ -1374,7 +1527,7 @@ function makeRoom(
 }
 
 /* ---------- الساحة المركزية ---------- */
-function makePlaza(sh: Shared, layout: OfficeLayout): THREE.Group {
+function makePlaza(sh: Shared, layout: OfficeLayout, assets: OfficeAssets | null): THREE.Group {
   const g = new THREE.Group()
   const R = layout.plazaRadius
   const rand = rng(hashSeed('plaza'))
@@ -1418,10 +1571,21 @@ function makePlaza(sh: Shared, layout: OfficeLayout): THREE.Group {
   counterGlow.rotation.z = Math.PI / 6
   counterGlow.position.y = 0.3
   reception.add(counterGlow)
-  const host = makeFigure('reception-host', { standing: true })
-  host.group.position.set(0, 0.1, -0.55)
-  host.group.rotation.y = Math.PI
-  reception.add(host.group)
+  if (assets) {
+    const host = createCharacter(assets, {
+      body: 'female', variant: 2, hairColor: 0x4a3220, mode: 'stand',
+    })
+    host.group.position.set(0, 0.12, -0.55)
+    reception.add(host.group)
+  } else {
+    const host = makeFigure('reception-host', { standing: true })
+    host.group.position.set(0, 0.1, -0.55)
+    host.group.rotation.y = Math.PI
+    reception.add(host.group)
+  }
+  const receptionBlob = blobShadow(sh, 4.4, 4.4, 0.4)
+  receptionBlob.position.set(0, 0.135, 0)
+  g.add(receptionBlob)
   const counterPlant = makePlant(sh, rand, 0.6)
   counterPlant.position.set(0.85, 1.02, 0.55)
   reception.add(counterPlant)
@@ -1459,14 +1623,35 @@ function makePlaza(sh: Shared, layout: OfficeLayout): THREE.Group {
   }
 
   // موظفان واقفان بيتكلموا جنب الاستقبال (حياة في الساحة — زينة مش بيانات)
-  const talker1 = makeFigure('plaza-talker-1', { standing: true, present: true })
-  talker1.group.position.set(2.6, 0.1, 1.7)
-  talker1.group.rotation.y = -2.2
-  g.add(talker1.group)
-  const talker2 = makeFigure('plaza-talker-2', { standing: true })
-  talker2.group.position.set(3.3, 0.1, 2.5)
-  talker2.group.rotation.y = 0.9
-  g.add(talker2.group)
+  if (assets) {
+    // شخصيات حقيقية واقفة — دوراناتها +π عن البدائية لأن وش النموذج +z
+    const talker1 = createCharacter(assets, {
+      body: 'male', variant: 4, hairColor: 0x2a2019, mode: 'stand', present: true,
+    })
+    talker1.group.position.set(2.6, 0.12, 1.7)
+    talker1.group.rotation.y = -2.2 + Math.PI
+    g.add(talker1.group)
+    const talker2 = createCharacter(assets, {
+      body: 'female', variant: 1, hairColor: 0x6e4525, mode: 'stand',
+    })
+    talker2.group.position.set(3.3, 0.12, 2.5)
+    talker2.group.rotation.y = 0.9 + Math.PI
+    g.add(talker2.group)
+  } else {
+    const talker1 = makeFigure('plaza-talker-1', { standing: true, present: true })
+    talker1.group.position.set(2.6, 0.1, 1.7)
+    talker1.group.rotation.y = -2.2
+    g.add(talker1.group)
+    const talker2 = makeFigure('plaza-talker-2', { standing: true })
+    talker2.group.position.set(3.3, 0.1, 2.5)
+    talker2.group.rotation.y = 0.9
+    g.add(talker2.group)
+  }
+  for (const [bx, bz] of [[2.6, 1.7], [3.3, 2.5]] as const) {
+    const b = blobShadow(sh, 0.95, 0.95, 0.5)
+    b.position.set(bx, 0.135, bz)
+    g.add(b)
+  }
 
   // أحواض زرع مستطيلة بنباتات كبيرة حوالين الساحة
   for (const a of [0.45, 2.95, 5.35]) {
@@ -1494,7 +1679,7 @@ function makePlaza(sh: Shared, layout: OfficeLayout): THREE.Group {
 }
 
 /* ---------- الدالة الرئيسية ---------- */
-export function buildOfficeScene(layout: OfficeLayout): BuiltOffice {
+export function buildOfficeScene(layout: OfficeLayout, assets: OfficeAssets | null = null): BuiltOffice {
   const sh = makeShared()
   const group = new THREE.Group()
   const pickables: THREE.Object3D[] = []
@@ -1532,9 +1717,9 @@ export function buildOfficeScene(layout: OfficeLayout): BuiltOffice {
   ground.castShadow = false
   group.add(ground)
 
-  group.add(makePlaza(sh, layout))
+  group.add(makePlaza(sh, layout, assets))
   for (const room of layout.rooms) {
-    group.add(makeRoom(sh, room, animators, pickables, anchors))
+    group.add(makeRoom(sh, room, animators, pickables, anchors, assets))
   }
 
   const tick = (t: number) => {
@@ -1550,6 +1735,8 @@ export function buildOfficeScene(layout: OfficeLayout): BuiltOffice {
         a.spriteMat.opacity = Math.sin(p * Math.PI) * 0.95
       } else if (a.kind === 'screen' && a.mat) {
         a.mat.emissiveIntensity = 1.05 + Math.sin(t * 2.6 + a.phase) * 0.18
+      } else if (a.kind === 'gltf' && a.rig) {
+        a.rig.animate?.(t + a.phase)
       }
     }
   }
@@ -1557,10 +1744,18 @@ export function buildOfficeScene(layout: OfficeLayout): BuiltOffice {
   const dispose = () => {
     group.traverse((o) => {
       if (o instanceof THREE.Mesh || o instanceof THREE.Sprite) {
-        o.geometry?.dispose()
+        /*
+         * أصول GLTF المشتركة (شخصيات/أثاث) ملك ذاكرة الأصول المؤقتة:
+         * هندستها وخاماتها الأصلية ما تتفرّغش مع المشهد — اللي بيتفرّغ بس
+         * خامات الشخصيات المنسوخة لكل موظف (owned) وأي هندسة/خامة إجرائية.
+         */
+        const shared = o.userData.sharedAsset === true
+        if (!shared) o.geometry?.dispose()
         const mat = o.material as THREE.Material | THREE.Material[]
-        if (Array.isArray(mat)) mat.forEach((m) => m.dispose())
-        else mat?.dispose()
+        const mats = Array.isArray(mat) ? mat : [mat]
+        for (const m of mats) {
+          if (m && (!shared || m.userData.owned === true)) m.dispose()
+        }
       }
     })
     for (const t of sh.screenTexs) t.dispose()
@@ -1574,6 +1769,8 @@ export function buildOfficeScene(layout: OfficeLayout): BuiltOffice {
     for (const t of sh.extraTextures) t.dispose()
     sh.zzzTex.dispose()
     sh.glowTex.dispose()
+    sh.blobTex.dispose()
+    sh.blobGeo.dispose()
   }
 
   return { group, pickables, anchors, tick, dispose }

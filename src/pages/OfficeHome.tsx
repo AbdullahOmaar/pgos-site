@@ -1,5 +1,5 @@
-import { Suspense, lazy, useMemo, useState } from 'react'
-import { Link, useSearchParams } from 'react-router-dom'
+import { Suspense, lazy, useEffect, useMemo, useState } from 'react'
+import { Link } from 'react-router-dom'
 
 /* تحميل كسول: مكتبة Three.js بتتحمل مع الهوم بس، وباقي الصفحات تفضل خفيفة */
 const OfficeScene = lazy(() => import('../components/OfficeScene'))
@@ -36,9 +36,13 @@ const SECTION_LINKS = [
 let uidCounter = 1000
 
 export default function OfficeHome() {
-  const [params, setParams] = useSearchParams()
   const [data, setData] = useState<OfficeData>(officeSeed)
-  const selectedId = params.get('select')
+  /*
+   * قاعدة المالك (2026-11-24): البطاقة لا تظهر تلقائيًا أبدًا — لا من رابط
+   * ولا من تحديث. الاختيار حالة داخلية بتتولد من ضغطة مستخدم حقيقية على
+   * موظف/مكتب في المشهد بس، وبتتقفل بزر الإغلاق أو الضغط برّاها أو Escape.
+   */
+  const [selectedId, setSelectedId] = useState<string | null>(null)
   const selected = data.employees.find((e) => e.id === selectedId) ?? null
   const selectedDept = selected
     ? data.departments.find((d) => d.id === selected.department_id)
@@ -54,10 +58,17 @@ export default function OfficeHome() {
     [data],
   )
 
-  const select = (id: string | null) => {
-    if (id) setParams({ select: id }, { replace: true })
-    else setParams({}, { replace: true })
-  }
+  const select = (id: string | null) => setSelectedId(id)
+
+  /* Escape بيقفل البطاقة — إخفاء سهل وواضح على الديسكتوب كمان */
+  useEffect(() => {
+    if (!selectedId) return
+    const onKey = (ev: KeyboardEvent) => {
+      if (ev.key === 'Escape') setSelectedId(null)
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [selectedId])
 
   const cycleStatus = (id: string) =>
     setData((prev) => ({
@@ -109,7 +120,7 @@ export default function OfficeHome() {
         <h1 className="flex flex-wrap items-center gap-2 text-xl font-bold sm:text-2xl">
           المقر الافتراضي — 3A Automation
           <span className="rounded-full bg-warn/20 px-2.5 py-0.5 text-xs font-semibold text-[#9a6206] dark:text-warn">
-            نموذج تفاعلي — جولة بناء أولى
+            نموذج تفاعلي — جولة دمج الشخصيات
           </span>
         </h1>
         <p className="mt-1 text-sm text-muted">
@@ -161,16 +172,24 @@ export default function OfficeHome() {
           <span className="rounded-full bg-black/45 px-2.5 py-1 text-white backdrop-blur">⚪ غير متصل</span>
         </div>
 
-        {/* بطاقة الموظف — bottom sheet فوق المشهد */}
+        {/* بطاقة الموظف — بتظهر بضغطة مستخدم بس، والضغط برّاها يقفلها */}
         {selected && (
-          <div className="absolute inset-x-3 bottom-3 sm:inset-x-auto sm:w-[22rem]">
-            <EmployeeCard
-              employee={selected}
-              department={selectedDept}
-              onClose={() => select(null)}
-              onCycleStatus={cycleStatus}
+          <>
+            <button
+              type="button"
+              aria-label="إغلاق البطاقة"
+              onClick={() => select(null)}
+              className="absolute inset-0 h-full w-full cursor-default bg-[#04122b]/25 sm:bg-transparent"
             />
-          </div>
+            <div className="absolute inset-x-3 bottom-3 sm:inset-x-auto sm:w-[22rem]">
+              <EmployeeCard
+                employee={selected}
+                department={selectedDept}
+                onClose={() => select(null)}
+                onCycleStatus={cycleStatus}
+              />
+            </div>
+          </>
         )}
       </div>
 

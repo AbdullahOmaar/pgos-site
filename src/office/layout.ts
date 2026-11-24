@@ -34,9 +34,10 @@ export interface OfficeLayout {
   extent: number
 }
 
-/* مقاسات وحدة المكتب (متر افتراضي) */
-const DESK_CELL_W = 2.05
-const DESK_CELL_D = 1.65
+/* مقاسات وحدة المكتب (متر افتراضي) — اتوسّعت في جولة دمج الشخصيات:
+ * محطة Kenney + شخصية حقيقية ١٫٨م محتاجين عمق وعرض أكبر من الدمى القديمة */
+const DESK_CELL_W = 2.2
+const DESK_CELL_D = 2.05
 const ROOM_PAD_X = 0.9
 const ROOM_FRONT_PAD = 1.0
 const ROOM_BACK_PAD = 0.8

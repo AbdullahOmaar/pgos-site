@@ -26,10 +26,10 @@ export default function EmployeeCard({ employee: e, department, onClose, onCycle
     .map((p) => p[0])
     .join(' ')
   return (
-    <div className="pointer-events-auto w-full rounded-2xl border border-border bg-card/97 p-4 shadow-2xl backdrop-blur">
-      <div className="flex items-start gap-3">
+    <div className="pointer-events-auto w-full rounded-2xl border border-border bg-card/97 p-3 shadow-2xl backdrop-blur sm:p-4">
+      <div className="flex items-start gap-2.5 sm:gap-3">
         <div
-          className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full text-base font-bold text-white"
+          className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-sm font-bold text-white sm:h-12 sm:w-12 sm:text-base"
           style={{ background: 'linear-gradient(135deg, #3B3FA3, #0A2342)' }}
           aria-hidden
         >
@@ -50,7 +50,7 @@ export default function EmployeeCard({ employee: e, department, onClose, onCycle
         <button
           type="button"
           onClick={onClose}
-          className="shrink-0 rounded-full bg-soft px-2.5 py-1 text-sm text-muted"
+          className="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-soft text-base font-bold transition active:scale-95"
           aria-label="إغلاق البطاقة"
         >
           ✕
@@ -58,31 +58,32 @@ export default function EmployeeCard({ employee: e, department, onClose, onCycle
       </div>
 
       {e.current_task ? (
-        <p className="mt-3 rounded-xl bg-soft px-3 py-2 text-sm">
+        <p className="mt-2 rounded-xl bg-soft px-3 py-1.5 text-sm sm:mt-3 sm:py-2">
           <span className="font-semibold">المهمة الحالية: </span>
           {e.current_task}
         </p>
       ) : null}
 
       {(e.tasks_open !== undefined || e.projects !== undefined || e.rating !== undefined) && (
-        <div className="mt-3 grid grid-cols-3 gap-2 text-center">
-          <div className="rounded-xl bg-soft px-2 py-2">
-            <p className="text-lg leading-none font-bold text-primary">{e.tasks_open ?? '—'}</p>
+        <div className="mt-2 grid grid-cols-3 gap-2 text-center sm:mt-3">
+          <div className="rounded-xl bg-soft px-2 py-1.5 sm:py-2">
+            <p className="text-base leading-none font-bold text-primary sm:text-lg">{e.tasks_open ?? '—'}</p>
             <p className="mt-1 text-[11px] text-muted">مهام مفتوحة</p>
           </div>
-          <div className="rounded-xl bg-soft px-2 py-2">
-            <p className="text-lg leading-none font-bold text-primary">{e.projects ?? '—'}</p>
+          <div className="rounded-xl bg-soft px-2 py-1.5 sm:py-2">
+            <p className="text-base leading-none font-bold text-primary sm:text-lg">{e.projects ?? '—'}</p>
             <p className="mt-1 text-[11px] text-muted">مشاريع</p>
           </div>
-          <div className="rounded-xl bg-soft px-2 py-2">
-            <p className="text-lg leading-none font-bold text-primary">{e.rating ?? '—'}</p>
+          <div className="rounded-xl bg-soft px-2 py-1.5 sm:py-2">
+            <p className="text-base leading-none font-bold text-primary sm:text-lg">{e.rating ?? '—'}</p>
             <p className="mt-1 text-[11px] text-muted">التقييم</p>
           </div>
         </div>
       )}
 
+      {/* الأدوات بتتخفى على الموبايل علشان البطاقة تفضل صغيرة ومضغوطة */}
       {e.tools.length > 0 && (
-        <div className="mt-3 flex flex-wrap items-center gap-1.5">
+        <div className="mt-3 hidden flex-wrap items-center gap-1.5 sm:flex">
           <span className="text-xs text-muted">الأدوات:</span>
           {e.tools.map((t) => (
             <Chip key={t} tone="info">
@@ -92,18 +93,18 @@ export default function EmployeeCard({ employee: e, department, onClose, onCycle
         </div>
       )}
 
-      <div className="mt-4 flex gap-2">
+      <div className="mt-3 flex gap-2 sm:mt-4">
         <button
           type="button"
           onClick={() => onCycleStatus(e.id)}
-          className="flex-1 rounded-full bg-primary px-4 py-2.5 text-sm font-bold text-white transition active:scale-[0.98]"
+          className="flex-1 rounded-full bg-primary px-4 py-2 text-sm font-bold text-white transition active:scale-[0.98] sm:py-2.5"
         >
           بدّل الحالة
         </button>
         <button
           type="button"
           onClick={onClose}
-          className="rounded-full px-4 py-2.5 text-sm font-semibold text-primary ring-1 ring-primary transition active:scale-[0.98]"
+          className="rounded-full px-4 py-2 text-sm font-semibold text-primary ring-1 ring-primary transition active:scale-[0.98] sm:py-2.5"
         >
           إغلاق
         </button>
