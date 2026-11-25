@@ -20,6 +20,30 @@ export function StatCard({ label, value, sub, to }: { label: string; value: Reac
   return to ? (<Link to={to} className="block active:scale-[0.99]">{inner}</Link>) : inner
 }
 
+/** سطر زمن البند (3A-427 نسخة أولى): بدء/إغلاق/مدة تقويمية — بيختفي لو مفيش started_at مسجل */
+export function IssueTimeLine({ startedAt, completedAt }: { startedAt: string | null; completedAt: string | null }) {
+  if (!startedAt) return null
+  const fmt = (iso: string) =>
+    new Date(iso).toLocaleString('ar-EG', { dateStyle: 'medium', timeStyle: 'short', timeZone: 'Africa/Cairo' })
+  const start = Date.parse(startedAt)
+  const end = completedAt ? Date.parse(completedAt) : Date.now()
+  const ms = Number.isNaN(start) || Number.isNaN(end) || end < start ? null : end - start
+  const dur = (v: number) => {
+    const minutes = Math.floor(v / 60000)
+    if (minutes < 60) return `${minutes} د`
+    const hours = Math.floor(minutes / 60)
+    if (hours < 48) return `${hours} س`
+    return `${Math.floor(hours / 24)} يوم`
+  }
+  return (
+    <span>
+      ⏱ بدأ {fmt(startedAt)}
+      {completedAt ? <> · أُغلق {fmt(completedAt)}</> : <> · لسه شغال</>}
+      {ms !== null ? <> · مدة تقويمية {dur(ms)}</> : null}
+    </span>
+  )
+}
+
 export function SectionTitle({ children, to, linkLabel }: { children: ReactNode; to?: string; linkLabel?: string }) {
   return (
     <div className="mt-6 mb-3 flex items-center justify-between gap-3">

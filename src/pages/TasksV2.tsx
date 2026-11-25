@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import { Card, Chip, EmptyState, ErrorState, LoadingState } from '../components/ui'
-import { FreshnessBadge } from '../components/v2/widgets'
+import { FreshnessBadge, IssueTimeLine } from '../components/v2/widgets'
 import { fmtDate } from '../lib/data'
 import { useOsData } from '../lib/live/provider'
 
@@ -45,6 +45,7 @@ export default function TasksV2() {
       <header className="mb-4">
         <h1 className="text-[22px] leading-8 font-bold sm:text-2xl">المهام</h1>
         <p className="mt-1 text-sm text-muted">{filtered.length} بند مطابق — تُعرض أول ١٠٠ نتيجة، صفِّ أكتر للوصول للباقي.</p>
+        <p className="mt-1 text-xs text-muted">زمن البند (3A-427): مدة تقويمية من «بدأ» لـ«أُغلق» من الحقول المتزامنة — مش زمن شغل بمؤقّت، ومفيش مقارنة بتقدير في النسخة الأولى (مصدر التقدير لسه مش محسوم).</p>
         <div className="mt-3"><FreshnessBadge source={d.source} generatedAt={d.generatedAt} /></div>
       </header>
 
@@ -85,6 +86,9 @@ export default function TasksV2() {
                   {d.projects.find((p) => p.id === i.project_id)?.name ?? '—'} · {fmtDate(i.updated_at)}
                   {i.url ? <> · <a href={i.url} target="_blank" rel="noreferrer" className="font-semibold text-accent">المصدر ↗</a></> : null}
                 </p>
+                {i.started_at ? (
+                  <p className="mt-0.5 text-xs text-muted"><IssueTimeLine startedAt={i.started_at} completedAt={i.completed_at} /></p>
+                ) : null}
               </li>
             ))}
           </ul>

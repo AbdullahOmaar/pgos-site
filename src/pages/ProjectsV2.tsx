@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { Card, Chip, EmptyState, ErrorState, LoadingState } from '../components/ui'
-import { FreshnessBadge, ProgressBar } from '../components/v2/widgets'
+import { FreshnessBadge, IssueTimeLine, ProgressBar } from '../components/v2/widgets'
 import { fmtDate } from '../lib/data'
 import { completionPct, projectIssues } from '../lib/live/metrics'
 import { useOsData } from '../lib/live/provider'
@@ -81,6 +81,9 @@ export default function ProjectsV2() {
                             <Chip tone="muted">{i.status_name}</Chip>{' '}
                             <span className="text-xs text-muted">{fmtDate(i.updated_at)}</span>
                             <p className="mt-0.5">{i.title}</p>
+                            {i.started_at ? (
+                              <p className="mt-0.5 text-xs text-muted"><IssueTimeLine startedAt={i.started_at} completedAt={i.completed_at} /></p>
+                            ) : null}
                           </li>
                         ))}
                       </ul>

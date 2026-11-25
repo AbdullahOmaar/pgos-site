@@ -20,3 +20,27 @@ export function phaseIssues(issues: LiveIssue[], phase: string): LiveIssue[] {
 }
 
 export const PHASES = ['Phase 1', 'Phase 2'] as const
+
+/*
+ * زمن البند في النسخة الأولى من 3A-427 — من الحقول المتزامنة الموجودة بس
+ * (started_at/completed_at). دي مدة تقويمية بين البدء والإغلاق، مش زمن شغل
+ * بمؤقّت (جدول قيود الزمن خطوة منفصلة ببوابة) — والتسمية في الواجهة بتوضح ده.
+ * مفيش أي مقارنة بتقدير: مصدر التقدير (G9) لسه مش محسوم، برّه النسخة الأولى.
+ */
+export function issueElapsedMs(issue: LiveIssue, nowMs: number): number | null {
+  if (!issue.started_at) return null
+  const start = Date.parse(issue.started_at)
+  if (Number.isNaN(start)) return null
+  const end = issue.completed_at ? Date.parse(issue.completed_at) : nowMs
+  if (Number.isNaN(end) || end < start) return null
+  return end - start
+}
+
+export function fmtDurationAr(ms: number): string {
+  const minutes = Math.floor(ms / 60000)
+  if (minutes < 60) return `${minutes} د`
+  const hours = Math.floor(minutes / 60)
+  if (hours < 48) return `${hours} س ${minutes % 60 ? `${minutes % 60} د` : ''}`.trim()
+  const days = Math.floor(hours / 24)
+  return `${days} يوم ${hours % 24 ? `${hours % 24} س` : ''}`.trim()
+}
