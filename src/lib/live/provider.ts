@@ -1,15 +1,17 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import type { SiteData } from '../../types'
 import { useSiteData } from '../data'
 import type { LiveIssue, LiveProject, OsDataset } from './types'
+import { fetchLiveDataset, liveConfigured } from './supabase'
 
 /*
  * طبقة بيانات واحدة قابلة للتبديل (تكليف 3A-352):
  * - الواجهة تستهلك OsDataset فقط عبر useOsData().
- * - المصدر الحالي: لقطة الخزنة عبر useSiteData القائم (المستوى ٢ في عقد القراءة) — يُحوَّل هنا فقط.
- * - عند اكتمال M0: يُفعَّل مصدر Supabase الحي (المستوى ١) داخل هذا الملف وحده،
- *   بنفس استعلامات READ-CONTRACT §٣، من غير أي تغيير في الصفحات.
- * - ممنوع بيانات وهمية: غياب المصدر = حالة unavailable صريحة في الواجهة.
+ * - المصدر الافتراضي: Supabase الحي (المستوى ١ في عقد القراءة) إن كان مُهيأً؛
+ *   أي فشل في الحي (مفتاح/صلاحيات/شبكة) يسقط بصمت على لقطة الخزنة (المستوى ٢)
+ *   — الواجهة لا تتوقف أبدًا، وشارة الحداثة بتقول المصدر الفعلي.
+ * - ممنوع بيانات وهمية: غياب المصدر = حالة unavailable صريحة في الواجهة،
+ *   والقيم null في OsDataset تعني «غير متاح من الحي» مش صفر (شوف types.ts).
  */
 
 function fromSnapshot(d: SiteData): OsDataset {
@@ -95,7 +97,31 @@ export type OsDataState =
 export function useOsData(): OsDataState {
   const snap = useSiteData()
   const [state, setState] = useState<OsDataState>({ phase: 'loading' })
+  const liveTried = useRef(false)
+  const liveWon = useRef(false)
   useEffect(() => {
+    // محاولة الحي مرة واحدة؛ الفشل يسقط على اللقطة تحت (نفس الـeffect).
+    if (liveConfigured() && !liveTried.current) {
+      liveTried.current = true
+      let cancelled = false
+      fetchLiveDataset()
+        .then((data) => {
+          if (cancelled) return
+          liveWon.current = true
+          setState({ phase: 'ready', data })
+        })
+        .catch(() => {
+          if (cancelled) return
+          if (snap.phase === 'ready') setState({ phase: 'ready', data: fromSnapshot(snap.data) })
+          else if (snap.phase === 'error') setState({ phase: 'error', message: snap.message })
+          else setState({ phase: 'loading' })
+        })
+      return () => {
+        cancelled = true
+      }
+    }
+    // الحي كسب خلاص — اللقطة ما ترجعش تغطي عليه لو اتحدثت.
+    if (liveWon.current) return
     if (snap.phase === 'loading') setState({ phase: 'loading' })
     else if (snap.phase === 'error') setState({ phase: 'error', message: snap.message })
     else setState({ phase: 'ready', data: fromSnapshot(snap.data) })

@@ -40,6 +40,8 @@ const SELECTS = {
     'id,name,initial,color,dept_name,role,status,group_name,project_ref&order=sort_order.asc',
   notificationTypes: 'id,label,description,default_on,active&order=sort_order.asc',
   notificationPrefs: 'device_id,type_id,enabled',
+  guardAlertsOpen: 'id&status=eq.open',
+  ledgerSeq: 'seq',
 } as const
 
 async function getRows<T>(base: string, key: string, table: string, select: string): Promise<T[]> {
@@ -56,7 +58,7 @@ export async function fetchLiveDataset(): Promise<OsDataset> {
   const key = import.meta.env.VITE_SUPABASE_ANON_KEY as string | undefined
   if (!base || !key) throw new Error('live-not-configured')
 
-  const [projects, issues, decisions, releases, checklist, syncRuns, orgDepartments, orgEmployees, notificationTypes, notificationPrefs] = await Promise.all([
+  const [projects, issues, decisions, releases, checklist, syncRuns, orgDepartments, orgEmployees, notificationTypes, notificationPrefs, guardAlertsOpen, ledgerRows] = await Promise.all([
     getRows<LiveProject>(base, key, 'pgos_projects', SELECTS.projects),
     getRows<LiveIssue>(base, key, 'pgos_issues', SELECTS.issues),
     getRows<LiveDecision>(base, key, 'pgos_hq_decisions', SELECTS.decisions).catch(() => [] as LiveDecision[]),
@@ -77,6 +79,12 @@ export async function fetchLiveDataset(): Promise<OsDataset> {
     getRows<{ device_id: string }>(base, key, 'pgos_notification_prefs', SELECTS.notificationPrefs).catch(
       () => [] as { device_id: string }[],
     ),
+    getRows<{ id: string }>(base, key, 'pgos_guard_alerts', SELECTS.guardAlertsOpen).catch(
+      () => [] as { id: string }[],
+    ),
+    getRows<{ seq: number }>(base, key, 'pgos_ledger', SELECTS.ledgerSeq).catch(
+      () => [] as { seq: number }[],
+    ),
   ])
 
   const lastSync = syncRuns[0] ?? null
@@ -96,11 +104,12 @@ export async function fetchLiveDataset(): Promise<OsDataset> {
     notificationTypes,
     notificationPrefsCount: notificationPrefs.length,
     lastSync,
-    // المخاطر/السجل/الحارس لسه مش جداول pgos_ حية (M2) — صفر هنا يعني «غير متاح من الحي»،
-    // والواجهة عند التبديل لازم تميّز ذلك؛ لا أرقام مخترعة.
-    openRisks: 0,
-    ledgerCount: 0,
-    ledgerVerified: false,
-    guardAlerts: 0,
+    // أرقام حقيقية من الحي: تنبيهات الحارس المفتوحة + عدد قيود السجل.
+    guardAlerts: guardAlertsOpen.length,
+    ledgerCount: ledgerRows.length,
+    // «غير متاح من الحي» (null لا صفر): المخاطر المفتوحة بلا مصدر حي بعد،
+    // والتحقق من سلسلة هاش السجل دالة خط الأنابيب — لا يُعاد تنفيذه هنا.
+    openRisks: null,
+    ledgerVerified: null,
   }
 }

@@ -115,8 +115,12 @@ export interface OsDataset {
   notificationTypes: LiveNotificationType[]
   notificationPrefsCount: number
   lastSync: LiveSyncRun | null
-  openRisks: number
-  ledgerCount: number
-  ledgerVerified: boolean
-  guardAlerts: number
+  /* null = «غير متاح من الحي» — لازم الواجهة تميّزه عن الصفر الفعلي، مش تعرضه صفر.
+     - openRisks: جدول pgos_records بلا حالة مخاطر (المخاطر في اللقطة منسّقة يدويًا) → null على الحي لحد نمذجتها.
+     - ledgerVerified: التحقق من سلسلة الهاش دالة خط الأنابيب القانونية؛ المحوّل ما يعيدش تنفيذها → null.
+     - ledgerCount / guardAlerts: أرقام حقيقية من الحي (عدد صفوف السجل / تنبيهات status=open). */
+  openRisks: number | null
+  ledgerCount: number | null
+  ledgerVerified: boolean | null
+  guardAlerts: number | null
 }

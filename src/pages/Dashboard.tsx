@@ -59,9 +59,9 @@ export default function Dashboard() {
 
       <div className="grid grid-cols-2 gap-3">
         <StatCard label="مشاريع" value={d.projects.length} to="/os/projects" />
-        <StatCard label="مخاطر مفتوحة" value={d.openRisks} to="/risks" />
-        <StatCard label="قيود سجل الشركة" value={d.ledgerCount} sub={d.ledgerVerified ? 'السلسلة سليمة ✔' : 'حالة السلسلة غير مؤكدة'} to="/ledger" />
-        <StatCard label="تنبيهات الحارس" value={d.guardAlerts} sub={d.guardAlerts === 0 ? 'لا فجوات مؤكدة' : 'فجوات تحتاج متابعة'} to="/completeness" />
+        <StatCard label="مخاطر مفتوحة" value={d.openRisks ?? '—'} sub={d.openRisks === null ? 'غير متاح من الحي' : undefined} to="/risks" />
+        <StatCard label="قيود سجل الشركة" value={d.ledgerCount ?? '—'} sub={d.ledgerCount === null ? 'غير متاح من الحي' : d.ledgerVerified === null ? 'حالة السلسلة غير متاحة من الحي' : d.ledgerVerified ? 'السلسلة سليمة ✔' : 'حالة السلسلة غير مؤكدة'} to="/ledger" />
+        <StatCard label="تنبيهات الحارس" value={d.guardAlerts ?? '—'} sub={d.guardAlerts === null ? 'غير متاح من الحي' : d.guardAlerts === 0 ? 'لا فجوات مؤكدة' : 'فجوات تحتاج متابعة'} to="/completeness" />
       </div>
 
       <SectionTitle to="/os/projects">المشاريع ونسبها</SectionTitle>
