@@ -10,6 +10,7 @@ import type {
   LiveSyncRun,
   OsDataset,
 } from './types'
+import { authHeaders, ensureFreshSession } from './auth'
 
 /*
  * محوّل القراءة الحية (3A-352 / عقد القراءة READ-CONTRACT §٣) — جاهز ومُختبَر بناءً،
@@ -18,8 +19,10 @@ import type {
  * الإعداد من البيئة فقط (بلا أي عنوان/مفتاح مكتوب في الكود — مشروع اوس هينتقل
  * لحساب Supabase منفصل بقرار المالك 2026-11-24، فالعنوان قيمة بيئة لا ثابت):
  *   VITE_SUPABASE_URL       — عنوان مشروع Supabase الحامل لجداول pgos_
- *   VITE_SUPABASE_ANON_KEY  — مفتاح anon (القراءة بسياسات RLS للمالك فقط)
- * الجلسة: الواجهة قراءة فقط؛ أي كتابة محظورة من المتصفح بنص العقد.
+ *   VITE_SUPABASE_ANON_KEY  — مفتاح anon (للتعريف بالعميل + نداءات الدخول فقط)
+ * الجلسة: القراءة بتوكن جلسة المالك (G1 — مهاجرة 000006 ربطت RLS بهوية المالك)؛
+ * بلا جلسة يرفض PostgREST القراءة ويسقط المزوّد على اللقطة. الواجهة قراءة فقط؛
+ * أي كتابة محظورة من المتصفح بنص العقد.
  */
 
 export function liveConfigured(): boolean {
@@ -44,9 +47,10 @@ const SELECTS = {
   ledgerSeq: 'seq',
 } as const
 
-async function getRows<T>(base: string, key: string, table: string, select: string): Promise<T[]> {
+async function getRows<T>(base: string, table: string, select: string): Promise<T[]> {
+  // G1: القراءة بتوكن جلسة المالك إن وُجدت؛ بلا جلسة يرسل مفتاح anon فيرفضه RLS بـ401.
   const res = await fetch(`${base}/rest/v1/${table}?select=${select}`, {
-    headers: { apikey: key, Authorization: `Bearer ${key}`, Accept: 'application/json' },
+    headers: { ...authHeaders(), Accept: 'application/json' },
   })
   if (!res.ok) throw new Error(`PostgREST ${table}: HTTP ${res.status}`)
   return (await res.json()) as T[]
@@ -57,32 +61,34 @@ export async function fetchLiveDataset(): Promise<OsDataset> {
   const base = import.meta.env.VITE_SUPABASE_URL as string | undefined
   const key = import.meta.env.VITE_SUPABASE_ANON_KEY as string | undefined
   if (!base || !key) throw new Error('live-not-configured')
+  // G1: جدّد جلسة المالك قبل القراءة؛ الفشل يمسحها ويسقط على مفتاح anon ثم على اللقطة.
+  await ensureFreshSession()
 
   const [projects, issues, decisions, releases, checklist, syncRuns, orgDepartments, orgEmployees, notificationTypes, notificationPrefs, guardAlertsOpen, ledgerRows] = await Promise.all([
-    getRows<LiveProject>(base, key, 'pgos_projects', SELECTS.projects),
-    getRows<LiveIssue>(base, key, 'pgos_issues', SELECTS.issues),
-    getRows<LiveDecision>(base, key, 'pgos_hq_decisions', SELECTS.decisions).catch(() => [] as LiveDecision[]),
-    getRows<LiveRelease>(base, key, 'pgos_releases', SELECTS.releases).catch(() => [] as LiveRelease[]),
-    getRows<LiveChecklistItem>(base, key, 'pgos_checklist_items', SELECTS.checklist).catch(
+    getRows<LiveProject>(base, 'pgos_projects', SELECTS.projects),
+    getRows<LiveIssue>(base, 'pgos_issues', SELECTS.issues),
+    getRows<LiveDecision>(base, 'pgos_hq_decisions', SELECTS.decisions).catch(() => [] as LiveDecision[]),
+    getRows<LiveRelease>(base, 'pgos_releases', SELECTS.releases).catch(() => [] as LiveRelease[]),
+    getRows<LiveChecklistItem>(base, 'pgos_checklist_items', SELECTS.checklist).catch(
       () => [] as LiveChecklistItem[],
     ),
-    getRows<LiveSyncRun>(base, key, 'pgos_sync_runs', SELECTS.sync).catch(() => [] as LiveSyncRun[]),
-    getRows<LiveOrgDepartment>(base, key, 'pgos_org_departments', SELECTS.orgDepartments).catch(
+    getRows<LiveSyncRun>(base, 'pgos_sync_runs', SELECTS.sync).catch(() => [] as LiveSyncRun[]),
+    getRows<LiveOrgDepartment>(base, 'pgos_org_departments', SELECTS.orgDepartments).catch(
       () => [] as LiveOrgDepartment[],
     ),
-    getRows<LiveOrgEmployee>(base, key, 'pgos_org_employees', SELECTS.orgEmployees).catch(
+    getRows<LiveOrgEmployee>(base, 'pgos_org_employees', SELECTS.orgEmployees).catch(
       () => [] as LiveOrgEmployee[],
     ),
-    getRows<LiveNotificationType>(base, key, 'pgos_notification_types', SELECTS.notificationTypes).catch(
+    getRows<LiveNotificationType>(base, 'pgos_notification_types', SELECTS.notificationTypes).catch(
       () => [] as LiveNotificationType[],
     ),
-    getRows<{ device_id: string }>(base, key, 'pgos_notification_prefs', SELECTS.notificationPrefs).catch(
+    getRows<{ device_id: string }>(base, 'pgos_notification_prefs', SELECTS.notificationPrefs).catch(
       () => [] as { device_id: string }[],
     ),
-    getRows<{ id: string }>(base, key, 'pgos_guard_alerts', SELECTS.guardAlertsOpen).catch(
+    getRows<{ id: string }>(base, 'pgos_guard_alerts', SELECTS.guardAlertsOpen).catch(
       () => [] as { id: string }[],
     ),
-    getRows<{ seq: number }>(base, key, 'pgos_ledger', SELECTS.ledgerSeq).catch(
+    getRows<{ seq: number }>(base, 'pgos_ledger', SELECTS.ledgerSeq).catch(
       () => [] as { seq: number }[],
     ),
   ])

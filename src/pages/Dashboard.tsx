@@ -1,9 +1,89 @@
+import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import { Card, Chip, EmptyState, ErrorState, LoadingState } from '../components/ui'
 import { FreshnessBadge, ProgressBar, SectionTitle, StatCard } from '../components/v2/widgets'
 import { fmtDate } from '../lib/data'
 import { completionPct, phaseIssues, projectIssues, PHASES } from '../lib/live/metrics'
 import { useOsData } from '../lib/live/provider'
+import { clearSession, getSession, signIn } from '../lib/live/auth'
+
+/*
+ * بطاقة دخول القراءة الحية (G1): بلا جلسة تظهر هنا — الدخول بحساب المالك الحالي
+ * في تطبيق المدرس، وبعد دخول ناجح تُعاد تحميل الصفحة ليعيد المزوّد محاولة الحي.
+ * بلا دخول تبقى الواجهة شغالة من لقطة الخزنة (شارة الحداثة بتقول المصدر).
+ */
+function LiveLoginCard() {
+  const [session, setSession] = useState(getSession())
+  const [email, setEmail] = useState('')
+  const [password, setPassword] = useState('')
+  const [busy, setBusy] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+  if (session) {
+    return (
+      <Card className="mb-3">
+        <p className="text-sm">متصل للقراءة الحية كـ <span className="font-bold" dir="ltr">{session.email}</span></p>
+        <button
+          type="button"
+          className="mt-2 min-h-11 rounded-xl border border-border px-3 text-sm font-semibold"
+          onClick={() => {
+            clearSession()
+            setSession(null)
+            window.location.reload()
+          }}
+        >
+          خروج من القراءة الحية
+        </button>
+      </Card>
+    )
+  }
+  return (
+    <Card className="mb-3">
+      <p className="text-sm font-bold">القراءة الحية تحتاج دخولك</p>
+      <p className="mt-0.5 text-xs text-muted">بحسابك في تطبيق المدرس (نفس الإيميل وكلمة المرور) — لحد ما تدخل، الأرقام من لقطة الخزنة.</p>
+      <form
+        className="mt-3 space-y-2"
+        onSubmit={(e) => {
+          e.preventDefault()
+          setBusy(true)
+          setError(null)
+          signIn(email, password)
+            .then(() => window.location.reload())
+            .catch((err: unknown) => {
+              setBusy(false)
+              setError(err instanceof Error ? err.message : 'تعذّر الدخول')
+            })
+        }}
+      >
+        <input
+          type="email"
+          value={email}
+          onChange={(e) => setEmail(e.target.value)}
+          placeholder="الإيميل"
+          dir="ltr"
+          required
+          className="min-h-11 w-full rounded-xl border border-border bg-card px-3 text-sm"
+        />
+        <input
+          type="password"
+          value={password}
+          onChange={(e) => setPassword(e.target.value)}
+          placeholder="كلمة المرور"
+          dir="ltr"
+          required
+          className="min-h-11 w-full rounded-xl border border-border bg-card px-3 text-sm"
+        />
+        {error ? <p className="text-xs text-red-600">{error === 'Invalid login credentials' ? 'بيانات الدخول غير صحيحة' : error}</p> : null}
+        <button
+          type="submit"
+          disabled={busy}
+          className="min-h-11 w-full rounded-xl bg-primary px-3 text-sm font-bold text-white disabled:opacity-50"
+        >
+          {busy ? 'جارٍ الدخول…' : 'دخول للقراءة الحية'}
+        </button>
+      </form>
+    </Card>
+  )
+}
 
 /*
  * الصفحة الأولى من واجهة اوس الجديدة (3A-352) — لوحة القيادة.
@@ -29,6 +109,8 @@ export default function Dashboard() {
         <p className="mt-1 text-sm text-muted">حالة الشركة في شاشة واحدة — المشاريع، الشغل الجاري، وآخر القرارات.</p>
         <div className="mt-3"><FreshnessBadge source={d.source} generatedAt={d.generatedAt} /></div>
       </header>
+
+      <LiveLoginCard />
 
       {/* مؤشر الإنجاز العام */}
       <Card className="mb-3">
