@@ -8,6 +8,7 @@ import {
 } from '../lib/vault.mjs'
 import { unlock } from '../lib/unlock'
 import { primeSiteData } from '../lib/data'
+import VersionLine from './VersionLine'
 
 /*
  * بوابة الخزنة — مكيّفة من شاشة التفعيل في pgos-app (src/App.tsx).
@@ -155,6 +156,8 @@ export default function VaultGate({ children }: { children: ReactNode }) {
         <img src="/otto.png" alt="أوتو" className="h-28 w-28 animate-pulse object-contain" />
         <p className="mt-4 font-bold">PGOS — نظام إدارة شركة 3A Automation</p>
         <p className="mt-1 text-sm text-muted">بنفتح اللقطة المشفرة…</p>
+        {/* سطر الإصدار على السبلاش — قاعدة مالك ملزمة 2026-11-25 */}
+        <VersionLine className="mt-3 text-xs font-bold text-primary" />
       </Shell>
     )
   }
@@ -191,6 +194,8 @@ export default function VaultGate({ children }: { children: ReactNode }) {
         <h1 className="mt-4 text-center text-xl font-bold">
           PGOS — نظام إدارة شركة 3A Automation
         </h1>
+        {/* سطر الإصدار على شاشة التفعيل — قاعدة مالك ملزمة 2026-11-25 */}
+        <VersionLine className="mt-2 text-center text-xs font-bold text-primary" />
         <p className="mt-2 max-w-sm text-center text-sm leading-relaxed text-muted">
           الموقع ده مشفر بمفتاح جهازك: البيانات بتتفك هنا على جهازك بس، ومفيش أي بيانات
           شركة بتتساب مكشوفة على الإنترنت.

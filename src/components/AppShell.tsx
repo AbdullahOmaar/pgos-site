@@ -1,5 +1,6 @@
 import { useEffect, useState, type ReactNode } from 'react'
 import { NavLink } from 'react-router-dom'
+import VersionLine from './VersionLine'
 
 const LINKS = [
   { to: '/', label: 'المقر الافتراضي', icon: '🏢' },
@@ -64,6 +65,8 @@ export default function AppShell({ children }: { children: ReactNode }) {
             <p className="truncate text-xs text-muted">
               3A Automation · مرآة قراءة فقط من المصادر الكانونية
             </p>
+            {/* سطر الإصدار ووقت النشر — قاعدة مالك ملزمة 2026-11-25، من بيانات البناء */}
+            <VersionLine className="truncate text-xs font-bold text-primary" />
           </div>
           <button
             type="button"
