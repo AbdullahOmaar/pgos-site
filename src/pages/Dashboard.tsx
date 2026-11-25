@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import { Card, Chip, EmptyState, ErrorState, LoadingState } from '../components/ui'
 import { FreshnessBadge, ProgressBar, SectionTitle, StatCard } from '../components/v2/widgets'
+import NotificationBell from '../components/v2/NotificationBell'
 import { fmtDate } from '../lib/data'
 import { completionPct, phaseIssues, projectIssues, PHASES } from '../lib/live/metrics'
 import { useOsData } from '../lib/live/provider'
@@ -105,7 +106,10 @@ export default function Dashboard() {
   return (
     <div dir="rtl">
       <header className="mb-4">
-        <h1 className="text-[22px] leading-8 font-bold sm:text-2xl">لوحة قيادة اوس</h1>
+        <div className="flex items-start justify-between gap-3">
+          <h1 className="text-[22px] leading-8 font-bold sm:text-2xl">لوحة قيادة اوس</h1>
+          <NotificationBell />
+        </div>
         <p className="mt-1 text-sm text-muted">حالة الشركة في شاشة واحدة — المشاريع، الشغل الجاري، وآخر القرارات.</p>
         <div className="mt-3"><FreshnessBadge source={d.source} generatedAt={d.generatedAt} /></div>
       </header>
