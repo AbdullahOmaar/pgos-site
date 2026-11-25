@@ -1,5 +1,7 @@
 /* أنواع نموذج العرض — مصدرها الوحيد public/data/site-data.json المولّد آليًا */
 
+import type { OfficeData } from './office/types'
+
 export interface SourceFreshness {
   source: string
   files?: number
@@ -246,6 +248,8 @@ export interface SiteData {
   hq_decisions: HqDecisions
   preprod_checklist: PreprodChecklist
   governance_ref: GovernanceRef
+  /* بيانات المقر الافتراضي من قاعدة اوس (P2-09) — غائبة لو تعذّرت قراءتها وقت التوليد */
+  office?: OfficeData | null
   guard: {
     state: {
       last_run?: string

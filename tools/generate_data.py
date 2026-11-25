@@ -619,6 +619,38 @@ def build_sanitized_data() -> dict:
     }
 
 
+# مصدر المكتب الافتراضي (P2-09): بيانات المشهد من قاعدة اوس نفسها (جداول
+# pgos_departments/pgos_employees) عبر قناة SQL — لا من بذرة محلية. مصدر
+# اختياري: أي فشل يخليه غائبًا فتسقط الواجهة على البذرة كملاذ أخير فقط.
+PGOS_REF = "qkwdyqocazwhojpyifbv"  # teacher-app — مستضيف pgos_ الحالي (المسار ب يعيد التوجيه)
+
+
+def fetch_office():
+    try:
+        sys.path.insert(0, os.path.expanduser(
+            "~/workspace/custom-connectors/custom.supabase/bin"))
+        from supabase_api import call
+        q = (
+            "select json_build_object("
+            "'departments', (select json_agg(row_to_json(d) order by d.sort_order) from "
+            "(select id, name, color, sort_order from public.pgos_departments) d), "
+            "'employees', (select json_agg(row_to_json(e) order by e.desk) from "
+            "(select id, name, role, department_id, desk, status, tools, "
+            "current_task, tasks_open, projects, rating from public.pgos_employees) e)"
+            ") as office"
+        )
+        rows = call("POST", f"/v1/projects/{PGOS_REF}/database/query", {"query": q})
+        office = rows[0]["office"]
+        for d in office["departments"]:
+            d.pop("sort_order", None)  # عمود ترتيب داخلي — مش من شكل المشهد
+        print(f"  مكتب افتراضي من القاعدة: {len(office['departments'])} قسم / "
+              f"{len(office['employees'])} موظف")
+        return office
+    except Exception as exc:  # مصدر اختياري — لا يقتل التوليد أبدًا
+        print(f"  تنبيه: تعذّرت قراءة المكتب من القاعدة ({exc}) — اللقطة بلا مكتب")
+        return None
+
+
 def main() -> int:
     records_dir = os.path.join(OPS, "pgos", "records")
     ledger_path = os.path.join(OPS, "ledger", "company-ledger.jsonl")
@@ -771,6 +803,8 @@ def main() -> int:
         for s in stamps
     ]
 
+    office = fetch_office()
+
     data = {
         "meta": {
             "generated_at": now_cairo().isoformat(timespec="seconds"),
@@ -797,6 +831,7 @@ def main() -> int:
             "state": guard_state,
             "alerts": alerts,
         },
+        "office": office,
         "internal_validation": {
             "kind": "internal_validation",
             "label": "تحقق داخلي بموقع PGOS — ليس فاليديتور PGOS الأصلي",

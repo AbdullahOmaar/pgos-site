@@ -1,6 +1,8 @@
 /* أنواع عقد القراءة الحي — مصدرها docs/READ-CONTRACT.md §4 و docs/DB-DESIGN-RFC-2026-11-23.md
    الواجهة الجديدة (3A-352) تستهلك هذه الأنواع فقط؛ أي مصدر بيانات لازم يطابقها. */
 
+import type { OfficeData } from '../../office/types'
+
 export type IssueStatusType = 'completed' | 'started' | 'unstarted' | 'backlog' | 'canceled' | string
 
 export interface LiveProject {
@@ -123,4 +125,7 @@ export interface OsDataset {
   ledgerCount: number | null
   ledgerVerified: boolean | null
   guardAlerts: number | null
+  /* بيانات المقر الافتراضي (P2-09) من جداول pgos_departments/pgos_employees —
+     null = غير متاحة من هذا المصدر، فتسقط صفحة المقر على البذرة كملاذ أخير. */
+  office: OfficeData | null
 }

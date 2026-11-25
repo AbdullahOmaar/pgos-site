@@ -1,10 +1,11 @@
-import { Suspense, lazy, useEffect, useMemo, useState } from 'react'
+import { Suspense, lazy, useEffect, useMemo, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
 
 /* تحميل كسول: مكتبة Three.js بتتحمل مع الهوم بس، وباقي الصفحات تفضل خفيفة */
 const OfficeScene = lazy(() => import('../components/OfficeScene'))
 import EmployeeCard from '../components/EmployeeCard'
 import { Card } from '../components/ui'
+import { useOsData } from '../lib/live/provider'
 import { officeSeed } from '../office/seed'
 import type { EmployeeStatus, OfficeData } from '../office/types'
 
@@ -37,6 +38,20 @@ let uidCounter = 1000
 
 export default function OfficeHome() {
   const [data, setData] = useState<OfficeData>(officeSeed)
+  /*
+   * P2-09 (شرط المالك 2026-11-25): بيانات المشهد مصدرها قاعدة اوس — الحي أولًا
+   * ثم لقطة الخزنة (المولّدة من القاعدة وقت التوليد). البذرة ملاذ أخير فقط لو
+   * المصدرين غابا (تطوير محلي بلا بيانات). التطبيق مرة واحدة: أزرار «جرّب
+   * البيانات» بتعدّل الحالة المحلية بعد كده بحرية.
+   */
+  const os = useOsData()
+  const officeApplied = useRef(false)
+  useEffect(() => {
+    if (!officeApplied.current && os.phase === 'ready' && os.data.office) {
+      officeApplied.current = true
+      setData(os.data.office)
+    }
+  }, [os])
   /*
    * قاعدة المالك (2026-11-24): البطاقة لا تظهر تلقائيًا أبدًا — لا من رابط
    * ولا من تحديث. الاختيار حالة داخلية بتتولد من ضغطة مستخدم حقيقية على

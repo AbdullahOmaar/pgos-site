@@ -86,6 +86,8 @@ function fromSnapshot(d: SiteData): OsDataset {
     ledgerCount: d.ledger.count,
     ledgerVerified: d.ledger.chain_verified,
     guardAlerts: d.guard.alerts.length,
+    // المقر الافتراضي (P2-09): اللقطة تحمل بياناته من القاعدة وقت التوليد.
+    office: d.office ?? null,
   }
 }
 

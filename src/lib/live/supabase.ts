@@ -10,7 +10,29 @@ import type {
   LiveSyncRun,
   OsDataset,
 } from './types'
+import type { Department as OfficeDepartment, Employee as OfficeEmployee, OfficeData } from '../../office/types'
 import { authHeaders, ensureFreshSession } from './auth'
+
+interface OfficeDepartmentRow {
+  id: string
+  name: string
+  color: string | null
+  sort_order: number
+}
+
+interface OfficeEmployeeRow {
+  id: string
+  name: string
+  role: string | null
+  department_id: string | null
+  desk: number | null
+  status: OfficeEmployee['status']
+  tools: string[] | null
+  current_task: string | null
+  tasks_open: number | null
+  projects: number | null
+  rating: number | null
+}
 
 /*
  * محوّل القراءة الحية (3A-352 / عقد القراءة READ-CONTRACT §٣) — جاهز ومُختبَر بناءً،
@@ -45,6 +67,10 @@ const SELECTS = {
   notificationPrefs: 'device_id,type_id,enabled',
   guardAlertsOpen: 'id&status=eq.open',
   ledgerSeq: 'seq',
+  // المقر الافتراضي (P2-09): طاقم المشهد من جداوله هو — لا يُخلط بسجل التنظيم.
+  officeDepartments: 'id,name,color,sort_order&order=sort_order.asc',
+  officeEmployees:
+    'id,name,role,department_id,desk,status,tools,current_task,tasks_open,projects,rating&order=desk.asc',
 } as const
 
 async function getRows<T>(base: string, table: string, select: string): Promise<T[]> {
@@ -64,7 +90,7 @@ export async function fetchLiveDataset(): Promise<OsDataset> {
   // G1: جدّد جلسة المالك قبل القراءة؛ الفشل يمسحها ويسقط على مفتاح anon ثم على اللقطة.
   await ensureFreshSession()
 
-  const [projects, issues, decisions, releases, checklist, syncRuns, orgDepartments, orgEmployees, notificationTypes, notificationPrefs, guardAlertsOpen, ledgerRows] = await Promise.all([
+  const [projects, issues, decisions, releases, checklist, syncRuns, orgDepartments, orgEmployees, notificationTypes, notificationPrefs, guardAlertsOpen, ledgerRows, officeDepartmentRows, officeEmployeeRows] = await Promise.all([
     getRows<LiveProject>(base, 'pgos_projects', SELECTS.projects),
     getRows<LiveIssue>(base, 'pgos_issues', SELECTS.issues),
     getRows<LiveDecision>(base, 'pgos_hq_decisions', SELECTS.decisions).catch(() => [] as LiveDecision[]),
@@ -91,7 +117,39 @@ export async function fetchLiveDataset(): Promise<OsDataset> {
     getRows<{ seq: number }>(base, 'pgos_ledger', SELECTS.ledgerSeq).catch(
       () => [] as { seq: number }[],
     ),
+    getRows<OfficeDepartmentRow>(base, 'pgos_departments', SELECTS.officeDepartments).catch(
+      () => [] as OfficeDepartmentRow[],
+    ),
+    getRows<OfficeEmployeeRow>(base, 'pgos_employees', SELECTS.officeEmployees).catch(
+      () => [] as OfficeEmployeeRow[],
+    ),
   ])
+
+  // المقر الافتراضي (P2-09): بيانات المشهد من القاعدة — غيابها null فتسقط
+  // الصفحة على البذرة كملاذ أخير فقط، لا تُملأ من أي مصدر آخر.
+  const office: OfficeData | null =
+    officeDepartmentRows.length && officeEmployeeRows.length
+      ? {
+          departments: officeDepartmentRows.map(
+            (d): OfficeDepartment => ({ id: d.id, name: d.name, color: d.color ?? '#64748B' }),
+          ),
+          employees: officeEmployeeRows.map(
+            (e): OfficeEmployee => ({
+              id: e.id,
+              name: e.name,
+              role: e.role ?? '',
+              department_id: e.department_id ?? '',
+              desk: e.desk ?? 0,
+              status: e.status,
+              tools: Array.isArray(e.tools) ? e.tools : [],
+              ...(e.current_task ? { current_task: e.current_task } : {}),
+              ...(e.tasks_open != null ? { tasks_open: e.tasks_open } : {}),
+              ...(e.projects != null ? { projects: e.projects } : {}),
+              ...(e.rating != null ? { rating: Number(e.rating) } : {}),
+            }),
+          ),
+        }
+      : null
 
   const lastSync = syncRuns[0] ?? null
   return {
@@ -117,5 +175,6 @@ export async function fetchLiveDataset(): Promise<OsDataset> {
     // والتحقق من سلسلة هاش السجل دالة خط الأنابيب — لا يُعاد تنفيذه هنا.
     openRisks: null,
     ledgerVerified: null,
+    office,
   }
 }
