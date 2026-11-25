@@ -87,9 +87,30 @@ function fromSnapshot(d: SiteData): OsDataset {
     ledgerCount: d.ledger.count,
     ledgerVerified: d.ledger.chain_verified,
     guardAlerts: d.guard.alerts.length,
+    guardAlertList: d.guard.alerts.map((a, idx) => ({
+      id: `guard-${idx}`,
+      title: a.title,
+      detail: a.entry,
+      status: 'open',
+      created_at: a.ts,
+      missing: a.missing ?? [],
+    })),
     // المقر الافتراضي (P2-09): اللقطة تحمل بياناته من القاعدة وقت التوليد.
     office: d.office ?? null,
   }
+}
+
+/* كاش حي على مستوى الوحدة: كل مستهلكي useOsData (صفحات + جرس الإشعارات)
+   بيتشاركوا محاولة جلب واحدة في الجلسة — فشلها لا يُخزّن، فالمحاولة الجاية تقدر تنجح. */
+let liveCache: Promise<OsDataset> | null = null
+function fetchLiveOnce(): Promise<OsDataset> {
+  if (!liveCache) {
+    liveCache = fetchLiveDataset()
+    liveCache.catch(() => {
+      liveCache = null
+    })
+  }
+  return liveCache
 }
 
 export type OsDataState =
@@ -107,7 +128,7 @@ export function useOsData(): OsDataState {
     if (liveConfigured() && !liveTried.current) {
       liveTried.current = true
       let cancelled = false
-      fetchLiveDataset()
+      fetchLiveOnce()
         .then((data) => {
           if (cancelled) return
           liveWon.current = true

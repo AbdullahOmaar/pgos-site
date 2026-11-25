@@ -102,6 +102,16 @@ export interface LiveNotificationType {
   active: boolean
 }
 
+/* تنبيه حارس — اللقطة: من guard.alerts (entry/title/missing/ts)؛ الحي: صف pgos_guard_alerts */
+export interface LiveGuardAlert {
+  id: string
+  title: string
+  detail: string | null
+  status: string
+  created_at: string
+  missing: string[]
+}
+
 export type DataSourceKind = 'live' | 'snapshot' | 'unavailable'
 
 export interface OsDataset {
@@ -125,6 +135,7 @@ export interface OsDataset {
   ledgerCount: number | null
   ledgerVerified: boolean | null
   guardAlerts: number | null
+  guardAlertList: LiveGuardAlert[]
   /* بيانات المقر الافتراضي (P2-09) من جداول pgos_departments/pgos_employees —
      null = غير متاحة من هذا المصدر، فتسقط صفحة المقر على البذرة كملاذ أخير. */
   office: OfficeData | null

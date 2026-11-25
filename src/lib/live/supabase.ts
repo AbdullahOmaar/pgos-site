@@ -65,7 +65,7 @@ const SELECTS = {
     'id,name,initial,color,dept_name,role,status,group_name,project_ref&order=sort_order.asc',
   notificationTypes: 'id,label,description,default_on,active&order=sort_order.asc',
   notificationPrefs: 'device_id,type_id,enabled',
-  guardAlertsOpen: 'id&status=eq.open',
+  guardAlertsOpen: 'id,kind,message,status,created_at&order=created_at.desc',
   ledgerSeq: 'seq',
   // المقر الافتراضي (P2-09): طاقم المشهد من جداوله هو — لا يُخلط بسجل التنظيم.
   officeDepartments: 'id,name,color,sort_order&order=sort_order.asc',
@@ -111,9 +111,9 @@ export async function fetchLiveDataset(): Promise<OsDataset> {
     getRows<{ device_id: string }>(base, 'pgos_notification_prefs', SELECTS.notificationPrefs).catch(
       () => [] as { device_id: string }[],
     ),
-    getRows<{ id: string }>(base, 'pgos_guard_alerts', SELECTS.guardAlertsOpen).catch(
-      () => [] as { id: string }[],
-    ),
+    getRows<{ id: string; kind: string; message: string | null; status: string; created_at: string }>(
+      base, 'pgos_guard_alerts', SELECTS.guardAlertsOpen,
+    ).catch(() => [] as { id: string; kind: string; message: string | null; status: string; created_at: string }[]),
     getRows<{ seq: number }>(base, 'pgos_ledger', SELECTS.ledgerSeq).catch(
       () => [] as { seq: number }[],
     ),
@@ -169,7 +169,15 @@ export async function fetchLiveDataset(): Promise<OsDataset> {
     notificationPrefsCount: notificationPrefs.length,
     lastSync,
     // أرقام حقيقية من الحي: تنبيهات الحارس المفتوحة + عدد قيود السجل.
-    guardAlerts: guardAlertsOpen.length,
+    guardAlerts: guardAlertsOpen.filter((a) => a.status === 'open').length,
+    guardAlertList: guardAlertsOpen.map((a) => ({
+      id: a.id,
+      title: a.message ?? a.kind,
+      detail: a.kind,
+      status: a.status,
+      created_at: a.created_at,
+      missing: [],
+    })),
     ledgerCount: ledgerRows.length,
     // «غير متاح من الحي» (null لا صفر): المخاطر المفتوحة بلا مصدر حي بعد،
     // والتحقق من سلسلة هاش السجل دالة خط الأنابيب — لا يُعاد تنفيذه هنا.
