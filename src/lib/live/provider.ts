@@ -75,12 +75,13 @@ function fromSnapshot(d: SiteData): OsDataset {
         pgos_site: { status: c.apps.pgos.status },
       },
     })),
-    // بيانات M2 (تنظيم/إشعارات) مش موجودة في لقطة الخزنة — فاضية هنا بصدق،
-    // وبتتملي من المحوّل الحي بس. ممنوع ملؤها من بذرة المكتب الافتراضي (طاقم مختلف).
-    orgDepartments: [],
-    orgEmployees: [],
-    notificationTypes: [],
-    notificationPrefsCount: 0,
+    // بيانات M2 (تنظيم/إشعارات): اللقطة بتحملها من القاعدة وقت التوليد (نفس
+    // مصدر الحي) — غيابها في لقطة قديمة = فاضية بصدق. ممنوع ملؤها من بذرة
+    // المكتب الافتراضي (طاقم مختلف).
+    orgDepartments: d.org?.departments ?? [],
+    orgEmployees: d.org?.employees ?? [],
+    notificationTypes: d.org?.notification_types ?? [],
+    notificationPrefsCount: d.org?.notification_prefs_count ?? 0,
     lastSync: null,
     openRisks: d.records.risks.filter((x) => String(x.status).toUpperCase() === 'OPEN').length,
     ledgerCount: d.ledger.count,

@@ -250,6 +250,36 @@ export interface SiteData {
   governance_ref: GovernanceRef
   /* بيانات المقر الافتراضي من قاعدة اوس (P2-09) — غائبة لو تعذّرت قراءتها وقت التوليد */
   office?: OfficeData | null
+  /* سجل التنظيم والإشعارات من قاعدة اوس — غائب لو تعذّرت قراءته وقت التوليد */
+  org?: {
+    departments: {
+      id: string
+      name: string
+      color: string | null
+      description: string | null
+      projects: string[]
+      sort_order: number
+    }[]
+    employees: {
+      id: string
+      name: string
+      initial: string | null
+      color: string | null
+      dept_name: string | null
+      role: string | null
+      status: string | null
+      group_name: string | null
+      project_ref: string | null
+    }[]
+    notification_types: {
+      id: string
+      label: string
+      description: string | null
+      default_on: boolean
+      active: boolean
+    }[]
+    notification_prefs_count: number
+  } | null
   guard: {
     state: {
       last_run?: string

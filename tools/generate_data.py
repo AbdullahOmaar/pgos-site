@@ -651,6 +651,44 @@ def fetch_office():
         return None
 
 
+def fetch_org():
+    """سجل التنظيم والإشعارات من قاعدة اوس (pgos_org_* + pgos_notification_*)
+    بنفس قناة SQL — اختياري زي المكتب: أي فشل يخليه غائبًا."""
+    try:
+        sys.path.insert(0, os.path.expanduser(
+            "~/workspace/custom-connectors/custom.supabase/bin"))
+        from supabase_api import call
+        q = (
+            "select json_build_object("
+            "'departments', (select json_agg(row_to_json(d) order by d.sort_order) from "
+            "(select id, name, color, description, projects, sort_order "
+            "from public.pgos_org_departments) d), "
+            "'employees', (select json_agg(row_to_json(e) order by e.sort_order) from "
+            "(select id, name, initial, color, dept_name, role, status, group_name, "
+            "project_ref, sort_order from public.pgos_org_employees) e), "
+            "'notification_types', (select json_agg(row_to_json(n) order by n.sort_order) from "
+            "(select id, label, description, default_on, active, sort_order "
+            "from public.pgos_notification_types) n), "
+            "'notification_prefs_count', (select count(*) from public.pgos_notification_prefs)"
+            ") as org"
+        )
+        rows = call("POST", f"/v1/projects/{PGOS_REF}/database/query", {"query": q})
+        org = rows[0]["org"]
+        for d in org["departments"]:
+            p = d.get("projects")
+            d["projects"] = [str(x) for x in p] if isinstance(p, list) else []
+        for e in org["employees"]:
+            e.pop("sort_order", None)  # ترتيب داخلي — مش من شكل العقد الحي
+        for n in org["notification_types"]:
+            n.pop("sort_order", None)
+        print(f"  سجل تنظيم من القاعدة: {len(org['departments'])} قسم / "
+              f"{len(org['employees'])} موظف / {len(org['notification_types'])} نوع إشعار")
+        return org
+    except Exception as exc:  # مصدر اختياري — لا يقتل التوليد أبدًا
+        print(f"  تنبيه: تعذّرت قراءة سجل التنظيم من القاعدة ({exc}) — اللقطة بلا سجل")
+        return None
+
+
 def main() -> int:
     records_dir = os.path.join(OPS, "pgos", "records")
     ledger_path = os.path.join(OPS, "ledger", "company-ledger.jsonl")
@@ -804,6 +842,7 @@ def main() -> int:
     ]
 
     office = fetch_office()
+    org = fetch_org()
 
     data = {
         "meta": {
@@ -832,6 +871,7 @@ def main() -> int:
             "alerts": alerts,
         },
         "office": office,
+        "org": org,
         "internal_validation": {
             "kind": "internal_validation",
             "label": "تحقق داخلي بموقع PGOS — ليس فاليديتور PGOS الأصلي",
