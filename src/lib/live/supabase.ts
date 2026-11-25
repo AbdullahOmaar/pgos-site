@@ -65,7 +65,7 @@ const SELECTS = {
     'id,name,initial,color,dept_name,role,status,group_name,project_ref&order=sort_order.asc',
   notificationTypes: 'id,label,description,default_on,active&order=sort_order.asc',
   notificationPrefs: 'device_id,type_id,enabled',
-  guardAlertsOpen: 'id,kind,message,status,created_at&order=created_at.desc',
+  guardAlertsOpen: 'id,kind,message,status,created_at&status=eq.open&order=created_at.desc',
   ledgerSeq: 'seq',
   // المقر الافتراضي (P2-09): طاقم المشهد من جداوله هو — لا يُخلط بسجل التنظيم.
   officeDepartments: 'id,name,color,sort_order&order=sort_order.asc',
