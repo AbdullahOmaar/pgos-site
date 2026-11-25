@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import * as THREE from 'three'
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js'
 import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js'
@@ -40,6 +40,7 @@ interface Runtime {
 }
 
 export default function OfficeScene({ data, selectedId, onSelect }: Props) {
+  const [glFailed, setGlFailed] = useState(false)
   const mountRef = useRef<HTMLDivElement>(null)
   const rtRef = useRef<Runtime | null>(null)
   const dataRef = useRef(data)
@@ -52,7 +53,16 @@ export default function OfficeScene({ data, selectedId, onSelect }: Props) {
     const mount = mountRef.current
     if (!mount) return
 
-    const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true })
+    let renderer: THREE.WebGLRenderer
+    try {
+      renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true })
+    } catch {
+      /* WebGL مش متاح (متصفح قديم/وضع توفير) — الصفحة تكمل ببديل نصي بدل ما تقع */
+      setGlFailed(true)
+      return
+    }
+    const reducedMotion = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches ?? false
+    const isSmallScreen = window.innerWidth < 640
     /* سقف نسبة البكسل أخف على الشاشات الصغيرة — قيد أداء موبايل حقيقي */
     const pixelRatio = Math.min(
       window.devicePixelRatio,
@@ -80,7 +90,9 @@ export default function OfficeScene({ data, selectedId, onSelect }: Props) {
     const dirLight = new THREE.DirectionalLight(0xfff1d6, 2.05)
     dirLight.position.set(16, 26, 10)
     dirLight.castShadow = true
-    dirLight.shadow.mapSize.set(2048, 2048)
+    /* خريطة ظل أخف على الموبايل — 2048 على شاشة صغيرة تكلفة GPU بلا فرق بصري يذكر */
+    const shadowSize = isSmallScreen ? 1024 : 2048
+    dirLight.shadow.mapSize.set(shadowSize, shadowSize)
     dirLight.shadow.bias = -0.0004
     dirLight.shadow.normalBias = 0.03
     scene.add(dirLight)
@@ -208,12 +220,29 @@ export default function OfficeScene({ data, selectedId, onSelect }: Props) {
     const ro = new ResizeObserver(resize)
     ro.observe(mount)
 
+    /*
+     * إيقاف الرندر لما المشهد برّه الشاشة أو التبويب مخفي — المشهد ثلاثي الأبعاد
+     * أتقل عنصر في الصفحة، وتشغيله في الخلفية بياكل بطارية موبايل المالك بلا أي فايدة.
+     */
+    let onScreen = true
+    let tabVisible = !document.hidden
+    const io = new IntersectionObserver((entries) => {
+      onScreen = entries[0]?.isIntersecting ?? true
+    })
+    io.observe(mount)
+    const onVis = () => {
+      tabVisible = !document.hidden
+    }
+    document.addEventListener('visibilitychange', onVis)
+
     const clock = new THREE.Clock()
     const loop = () => {
       rt.raf = requestAnimationFrame(loop)
-      const t = clock.getElapsedTime()
+      if (!onScreen || !tabVisible) return
+      /* تقليل الحركة: المشهد ثابت (زمن صفر) — لا نبض حلقة ولا حركة شخصيات */
+      const t = reducedMotion ? 0 : clock.getElapsedTime()
       rt.built?.tick(t)
-      if (ring.visible) {
+      if (ring.visible && !reducedMotion) {
         const s = 1 + Math.sin(t * 3) * 0.06
         ring.scale.set(s, s, 1)
       }
@@ -225,6 +254,8 @@ export default function OfficeScene({ data, selectedId, onSelect }: Props) {
     return () => {
       cancelled = true
       cancelAnimationFrame(rt.raf)
+      io.disconnect()
+      document.removeEventListener('visibilitychange', onVis)
       ro.disconnect()
       renderer.domElement.removeEventListener('pointerdown', onDown)
       renderer.domElement.removeEventListener('pointerup', onUp)
@@ -295,6 +326,14 @@ export default function OfficeScene({ data, selectedId, onSelect }: Props) {
     rt.ring.visible = true
   }, [selectedId, data])
 
+  if (glFailed) {
+    return (
+      <div className="flex h-full w-full items-center justify-center p-6 text-center text-sm text-muted" role="note">
+        المشهد ثلاثي الأبعاد مش متاح على الجهاز/المتصفح ده (WebGL) — بيانات الفريق والأقسام
+        تحت المشهد شغالة عادي، والمقر بيفتح كامل على أي جهاز بيدعم WebGL.
+      </div>
+    )
+  }
   return (
     <div
       ref={mountRef}
