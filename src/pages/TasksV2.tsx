@@ -2,6 +2,7 @@ import { useMemo, useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import { Card, Chip, EmptyState, ErrorState, LoadingState } from '../components/ui'
 import { FreshnessBadge, IssueTimeLine } from '../components/v2/widgets'
+import KanbanBoard from '../components/v2/KanbanBoard'
 import { fmtDate } from '../lib/data'
 import { useOsData } from '../lib/live/provider'
 
@@ -22,6 +23,8 @@ export default function TasksV2() {
   const [status, setStatus] = useState<string>('all')
   const [projectId, setProjectId] = useState<string>(params.get('project') ?? 'all')
   const [showArchived, setShowArchived] = useState(false)
+  /* العرض الأساسي: كانبان (P2-18) — القائمة متاحة بالتبديل من غير حذف أي قدرة */
+  const [view, setView] = useState<'kanban' | 'list'>('kanban')
 
   const filtered = useMemo(() => {
     if (state.phase !== 'ready') return []
@@ -44,10 +47,27 @@ export default function TasksV2() {
     <div dir="rtl">
       <header className="mb-4">
         <h1 className="text-[22px] leading-8 font-bold sm:text-2xl">المهام</h1>
-        <p className="mt-1 text-sm text-muted">{filtered.length} بند مطابق — تُعرض أول ١٠٠ نتيجة، صفِّ أكتر للوصول للباقي.</p>
+        {view === 'list' ? (
+          <p className="mt-1 text-sm text-muted">{filtered.length} بند مطابق — تُعرض أول ١٠٠ نتيجة، صفِّ أكتر للوصول للباقي.</p>
+        ) : (
+          <p className="mt-1 text-sm text-muted">لوحة الحالات — الأعمدة جنب بعضها، مرّر أفقيًا على الموبايل.</p>
+        )}
         <p className="mt-1 text-xs text-muted">زمن البند (3A-427): مدة تقويمية من «بدأ» لـ«أُغلق» من الحقول المتزامنة — مش زمن شغل بمؤقّت، ومفيش مقارنة بتقدير في النسخة الأولى (مصدر التقدير لسه مش محسوم).</p>
         <div className="mt-3"><FreshnessBadge source={d.source} generatedAt={d.generatedAt} /></div>
+        <div className="mt-3 flex gap-2" role="tablist" aria-label="طريقة العرض">
+          <button type="button" role="tab" aria-selected={view === 'kanban'} onClick={() => setView('kanban')}
+            className={`min-h-11 rounded-full px-4 text-sm font-bold ${view === 'kanban' ? 'bg-primary text-white' : 'border border-border bg-card text-muted'}`}>
+            🗂️ كانبان
+          </button>
+          <button type="button" role="tab" aria-selected={view === 'list'} onClick={() => setView('list')}
+            className={`min-h-11 rounded-full px-4 text-sm font-bold ${view === 'list' ? 'bg-primary text-white' : 'border border-border bg-card text-muted'}`}>
+            📋 قائمة
+          </button>
+        </div>
       </header>
+
+      {view === 'kanban' ? <KanbanBoard d={d} /> : (
+      <>
 
       <div className="mb-3 grid gap-2">
         <label className="sr-only" htmlFor="task-search">بحث في المهام</label>
@@ -93,6 +113,8 @@ export default function TasksV2() {
             ))}
           </ul>
         </Card>
+      )}
+      </>
       )}
     </div>
   )
