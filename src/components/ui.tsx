@@ -26,13 +26,18 @@ export function LoadingState() {
   )
 }
 
-export function ErrorState({ message }: { message: string }) {
+/*
+ * حالة خطأ مهذبة وثابتة (قاعدة المالك 2026-11-26: ممنوع أي خطأ خام قدام المستخدم).
+ * الرسالة الخام لا تصل هنا أصلًا — الخاصية message مقبولة لتوافق النداءات القديمة
+ * لكنها لا تُعرض أبدًا (لا مسارات، لا أوامر مطوّر، لا رسائل مكتبات).
+ */
+export function ErrorState({ message: _raw }: { message?: string }) {
+  void _raw
   return (
     <div className="rounded-2xl border border-bad/40 bg-bad/10 p-4 text-bad" role="alert">
-      <p className="font-bold">تعذّر تحميل بيانات الموقع</p>
+      <p className="font-bold">تعذّر تحميل البيانات</p>
       <p className="mt-1 text-sm">
-        ملف البيانات الثابت (/data/site-data.json) غير متاح ({message}). لا تُعرض أي بيانات
-        بديلة أو مخمّنة — شغّل خط التوليد (npm run data) ثم أعد المحاولة.
+        حصلت مشكلة مؤقتة في جلب البيانات — حدّث الصفحة وحاول تاني، ولو استمرت بلّغ المدير.
       </p>
     </div>
   )

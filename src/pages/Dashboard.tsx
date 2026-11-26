@@ -51,7 +51,13 @@ function LiveLoginCard() {
             .then(() => window.location.reload())
             .catch((err: unknown) => {
               setBusy(false)
-              setError(err instanceof Error ? err.message : 'تعذّر الدخول')
+              /* mapping مهذب (قاعدة 2026-11-26): الخام ما بيظهرش قدام المالك أبدًا */
+              const raw = err instanceof Error ? err.message : ''
+              setError(
+                raw === 'Invalid login credentials'
+                  ? 'بيانات الدخول غير صحيحة'
+                  : 'تعذّر الدخول دلوقتي — اتأكد من الاتصال وحاول تاني',
+              )
             })
         }}
       >
@@ -73,7 +79,7 @@ function LiveLoginCard() {
           required
           className="min-h-11 w-full rounded-xl border border-border bg-card px-3 text-sm"
         />
-        {error ? <p className="text-xs text-red-600">{error === 'Invalid login credentials' ? 'بيانات الدخول غير صحيحة' : error}</p> : null}
+        {error ? <p className="text-xs text-red-600">{error}</p> : null}
         <button
           type="submit"
           disabled={busy}
