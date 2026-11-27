@@ -25,6 +25,7 @@ import DecisionsV2 from './pages/DecisionsV2'
 import PreprodV2 from './pages/PreprodV2'
 import OrgV2 from './pages/OrgV2'
 import NotificationsV2 from './pages/NotificationsV2'
+import Kickoff from './pages/Kickoff'
 
 export default function App() {
   return (
@@ -40,6 +41,7 @@ export default function App() {
           <Route path="/os/preprod" element={<PreprodV2 />} />
           <Route path="/os/org" element={<OrgV2 />} />
           <Route path="/os/notifications" element={<NotificationsV2 />} />
+        <Route path="/os/kickoff" element={<Kickoff />} />
           <Route path="/overview" element={<Overview />} />
           <Route path="/projects" element={<Projects />} />
           <Route path="/decisions" element={<Decisions />} />
