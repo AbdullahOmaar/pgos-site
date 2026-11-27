@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { Card, Chip, EmptyState, ErrorState, LoadingState } from '../components/ui'
+import { Chip, EmptyState, ErrorState, LoadingState } from '../components/ui'
 import { FreshnessBadge } from '../components/v2/widgets'
 import { useOsData } from '../lib/live/provider'
 import type { LiveOrgEmployee, OsDataset } from '../lib/live/types'
