@@ -184,5 +184,7 @@ export async function fetchLiveDataset(): Promise<OsDataset> {
     openRisks: null,
     ledgerVerified: null,
     office,
+    // المواثيق مش في عقد القراءة الحي — «غير متاح من الحي» بصدق (null لا قائمة فاضية)
+    projectCharters: null,
   }
 }

@@ -19,7 +19,7 @@ import Adoption from './pages/Adoption'
 import AskCompany from './pages/AskCompany'
 import Preprod from './pages/Preprod'
 import Dashboard from './pages/Dashboard'
-import ProjectsV2 from './pages/ProjectsV2'
+import ProjectsMac from './pages/ProjectsMac'
 import TasksV2 from './pages/TasksV2'
 import DecisionsV2 from './pages/DecisionsV2'
 import PreprodV2 from './pages/PreprodV2'
@@ -34,7 +34,7 @@ export default function App() {
         <Routes>
           <Route path="/" element={<OfficeHome />} />
           <Route path="/dashboard" element={<Dashboard />} />
-          <Route path="/os/projects" element={<ProjectsV2 />} />
+          <Route path="/os/projects" element={<ProjectsMac />} />
           <Route path="/os/tasks" element={<TasksV2 />} />
           <Route path="/os/decisions" element={<DecisionsV2 />} />
           <Route path="/os/preprod" element={<PreprodV2 />} />
