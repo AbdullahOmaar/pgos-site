@@ -101,7 +101,7 @@ export default function TeamV2() {
                       <p className="mt-0.5 min-h-9 text-xs text-muted">{e.role ?? '—'}</p>
                       <span className="mt-2 flex flex-wrap gap-1.5">
                         {e.status ? <Chip tone="ok">{e.status}</Chip> : null}
-                        {e.project_ref ? <Chip tone="info">{projectName(d, e.project_ref)}</Chip> : null}
+                        {e.project_ref ? <Chip tone="info">{projectShortName(d, e.project_ref)}</Chip> : null}
                       </span>
                     </button>
                   ))}
@@ -147,4 +147,9 @@ export default function TeamV2() {
 
 function projectName(d: OsDataset, ref: string): string {
   return d.projects.find((p) => p.linear_id === ref)?.name ?? ref
+}
+
+/** اسم قصير لشارة الكارت الضيقة: أول مقطع قبل « — » (الاسم الكامل في ورقة التفاصيل) */
+function projectShortName(d: OsDataset, ref: string): string {
+  return projectName(d, ref).split(' — ')[0]
 }
