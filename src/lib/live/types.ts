@@ -145,4 +145,35 @@ export interface OsDataset {
      (رابط Linear الكانوني أو الاسم) بيتم في الصفحة، والسجل اللي ملوش مقابل
      بيظهر لوحده بصدق — مفيش اختراع مطابقات. */
   projectCharters: Record<string, unknown>[] | null
+  /* جداول مهاجرة 20261127000007 (حية 2026-11-27): إشعارات التطبيق وقيود الزمن.
+     null = غير متاحة من هذا المصدر (اللقطة لا تحملها؛ أو فشل جلبها الحي منفصلًا —
+     الجلب متسامح: فشل الجدولين دول لا يُسقط القراءة الحية كلها).
+     read في الإشعار = له قيد في pgos_notification_reads على أي جهاز للمالك. */
+  notifications: LiveNotification[] | null
+  timeEntries: LiveTimeEntry[] | null
+}
+
+export interface LiveNotification {
+  id: string
+  type_id: string | null
+  title: string
+  body: string | null
+  entity_type: string | null
+  entity_id: string | null
+  route: string | null
+  severity: string | null
+  created_at: string
+  source: string | null
+  read: boolean
+}
+
+export interface LiveTimeEntry {
+  id: string
+  issue_id: string
+  actor: string | null
+  started_at: string
+  ended_at: string | null
+  duration_minutes: number | null
+  origin: string | null
+  note: string | null
 }

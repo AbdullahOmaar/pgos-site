@@ -106,8 +106,11 @@ export default function TasksV2() {
                   {d.projects.find((p) => p.id === i.project_id)?.name ?? '—'} · {fmtDate(i.updated_at)}
                   {i.url ? <> · <a href={i.url} target="_blank" rel="noreferrer" className="font-semibold text-accent">المصدر ↗</a></> : null}
                 </p>
-                {i.started_at ? (
-                  <p className="mt-0.5 text-xs text-muted"><IssueTimeLine startedAt={i.started_at} completedAt={i.completed_at} /></p>
+                {i.started_at || (d.timeEntries ?? []).some((e) => e.issue_id === i.id) ? (
+                  <p className="mt-0.5 text-xs text-muted">
+                    <IssueTimeLine startedAt={i.started_at} completedAt={i.completed_at}
+                      entries={(d.timeEntries ?? []).filter((e) => e.issue_id === i.id)} />
+                  </p>
                 ) : null}
               </li>
             ))}

@@ -98,6 +98,8 @@ function fromSnapshot(d: SiteData): OsDataset {
     // المقر الافتراضي (P2-09): اللقطة تحمل بياناته من القاعدة وقت التوليد.
     office: d.office ?? null,
     projectCharters: (d.records.projects ?? []) as unknown as Record<string, unknown>[],
+    notifications: null,
+    timeEntries: null,
   }
 }
 

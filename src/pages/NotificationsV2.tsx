@@ -4,14 +4,24 @@ import { FreshnessBadge, SectionTitle } from '../components/v2/widgets'
 import { LAST_VISIT_KEY } from '../components/v2/NotificationBell'
 import { fmtDate } from '../lib/data'
 import { useOsData } from '../lib/live/provider'
+import type { OsDataset } from '../lib/live/types'
 
 /*
- * مركز إشعارات 3A-426 — النسخة الأولى (عرض فقط بالكامل):
- * المصادر الموجودة بس: تنبيهات الحارس (لقطة: guard.alerts / حي: pgos_guard_alerts)
- * + سجل أنواع الإشعارات الأربعة (قراءة فقط). لا تعليم كمقروء على الخادم،
- * لا تفضيلات قابلة للتعديل — «الجديد» تقريب محلي بآخر زيارة الجهاز ومتوسم كده.
- * جدول pgos_notifications المقترح في التصميم خطوة منفصلة ببوابة — مش موجود هنا.
+ * مركز إشعارات 3A-426 (عرض فقط بالكامل):
+ * - المصدر الأساسي دلوقتي: جدول pgos_notifications الحي (مهاجرة 20261127000007،
+ *   قراءة مالك فقط) + حالة القراءة من pgos_notification_reads (قيد على أي جهاز =
+ *   «اتقرأ»). الجدول مش في اللقطة — غيابه = null وبيتقال صراحة.
+ * - تنبيهات الحارس مصدر مكمّل ظاهر دايمًا تحت (لقطة: guard.alerts / حي:
+ *   pgos_guard_alerts) لحد ما الجدول يتملي — مفيش مصدر بيختفي ولا بيانات وهمية.
+ * - سجل أنواع الإشعارات الأربعة قراءة فقط. لا كتابة من المتصفح أبدًا: لا تعليم
+ *   كمقروء ولا تعديل تفضيلات من الواجهة.
  */
+const SEVERITY: Record<string, { label: string; tone: 'bad' | 'warn' | 'info' }> = {
+  critical: { label: 'حرج', tone: 'bad' },
+  warn: { label: 'تنبيه', tone: 'warn' },
+  warning: { label: 'تنبيه', tone: 'warn' },
+  info: { label: 'معلومة', tone: 'info' },
+}
 export default function NotificationsV2() {
   const state = useOsData()
 
@@ -36,13 +46,44 @@ export default function NotificationsV2() {
       <header className="mb-4">
         <h1 className="text-[22px] leading-8 font-bold sm:text-2xl">مركز الإشعارات</h1>
         <p className="mt-1 text-sm text-muted">
-          تنبيهات حارس الاكتمال وسجل أنواع إشعارات اوس — عرض فقط: مفيش تعليم كمقروء ولا تعديل
-          تفضيلات من الواجهة (قناة الكتابة قرار أمان منفصل ولسه متأجل).
+          إشعارات اوس من جدول الإشعارات الحي + تنبيهات حارس الاكتمال كمصدر مكمّل + سجل الأنواع —
+          عرض فقط: مفيش تعليم كمقروء ولا تعديل تفضيلات من الواجهة (الواجهة قراءة فقط بالكامل).
         </p>
         <div className="mt-3"><FreshnessBadge source={d.source} generatedAt={d.generatedAt} /></div>
       </header>
 
-      <SectionTitle>تنبيهات الحارس ({alerts.length})</SectionTitle>
+      <SectionTitle>إشعارات اوس{d.notifications ? ` (${d.notifications.length})` : ''}</SectionTitle>
+      {d.notifications === null ? (
+        <EmptyState text="جدول إشعارات التطبيق (pgos_notifications) بييجي من القراءة الحية بس ومش موجود في لقطة الخزنة — أول ما القراءة الحية تشتغل بجلسة المالك هيظهر هنا. تنبيهات الحارس تحت هي المتاحة من المصدر الحالي." />
+      ) : d.notifications.length === 0 ? (
+        <EmptyState text="الجدول الحي متصل ولسه فاضي — مفيش إشعارات مسجلة فيه لحد دلوقتي. تنبيهات الحارس تحت شغالة كمصدر مكمّل." />
+      ) : (
+        <div className="space-y-3">
+          {d.notifications.map((n) => {
+            const sev = n.severity ? SEVERITY[n.severity] : undefined
+            return (
+              <Card key={n.id}>
+                <p className="flex flex-wrap items-center gap-2">
+                  <span className="font-bold">{n.title}</span>
+                  {sev ? <Chip tone={sev.tone}>{sev.label}</Chip> : null}
+                  {n.read ? <Chip tone="muted">اتقرأ</Chip> : <Chip tone="info">جديد</Chip>}
+                  {n.type_id ? <Chip tone="muted">{typeLabel(d, n.type_id)}</Chip> : null}
+                </p>
+                {n.body ? <p className="mt-1 text-sm text-muted">{n.body}</p> : null}
+                <p className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted">
+                  <span>{fmtDate(n.created_at)}</span>
+                  {n.source ? <span>المصدر: {n.source}</span> : null}
+                  {n.route ? (
+                    <a href={n.route} className="font-semibold text-accent">افتح في اوس ←</a>
+                  ) : null}
+                </p>
+              </Card>
+            )
+          })}
+        </div>
+      )}
+
+      <SectionTitle>تنبيهات الحارس — مصدر مكمّل ({alerts.length})</SectionTitle>
       {alerts.length === 0 ? (
         <EmptyState text={d.source === 'live' ? 'لا تنبيهات حارس مسجلة في المصدر الحي حاليًا.' : 'لا تنبيهات حارس في اللقطة الحالية — آخر حالة معروفة: لا فجوات مؤكدة.'} />
       ) : (
@@ -88,4 +129,8 @@ export default function NotificationsV2() {
       </p>
     </div>
   )
+}
+
+function typeLabel(d: OsDataset, typeId: string): string {
+  return d.notificationTypes.find((x) => x.id === typeId)?.label ?? typeId
 }

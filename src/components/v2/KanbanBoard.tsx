@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
-import type { LiveIssue, OsDataset } from '../../lib/live/types'
+import type { LiveIssue, LiveTimeEntry, OsDataset } from '../../lib/live/types'
 import { fmtDurationAr } from '../../lib/live/metrics'
 
 /*
@@ -130,7 +130,7 @@ function Stamps({ i, col }: { i: LiveIssue; col: ColKey }) {
   )
 }
 
-function StampRecord({ i }: { i: LiveIssue }) {
+function StampRecord({ i, entries }: { i: LiveIssue; entries?: LiveTimeEntry[] | null }) {
   const [open, setOpen] = useState(false)
   const start = i.started_at
   const est = i.estimate_hours ?? null
@@ -148,6 +148,14 @@ function StampRecord({ i }: { i: LiveIssue }) {
       'الانحراف',
       Math.abs(diffH) < 0.05 ? 'على التقدير بالظبط' : diffH > 0 ? `أزود من التقدير بـ ${hoursAr(diffH)}` : `أقل من التقدير بـ ${hoursAr(-diffH)}`,
     ])
+  }
+  const recorded = (entries ?? []).filter((e) => e.ended_at)
+  if (recorded.length > 0) {
+    const totalMin = recorded.reduce((n, e) => {
+      const m = e.duration_minutes ?? (Date.parse(e.ended_at!) - Date.parse(e.started_at)) / 60000
+      return n + (Number.isFinite(m) && m > 0 ? m : 0)
+    }, 0)
+    rows.push(['زمن مسجل', `${hoursAr(totalMin / 60)} (${recorded.length} قيد)`])
   }
   rows.push(['آخر حركة', freshnessAr(i.updated_at)])
   return (
@@ -181,7 +189,7 @@ function TaskCard({ d, i, col }: { d: OsDataset; i: LiveIssue; col: ColKey }) {
         <span className="rounded-full border border-border px-2 py-px text-[11px] text-muted">{i.identifier}</span>
       </div>
       <Stamps i={i} col={col} />
-      <StampRecord i={i} />
+      <StampRecord i={i} entries={(d.timeEntries ?? []).filter((e) => e.issue_id === i.id)} />
     </div>
   )
 }

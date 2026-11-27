@@ -81,8 +81,11 @@ export default function ProjectsV2() {
                             <Chip tone="muted">{i.status_name}</Chip>{' '}
                             <span className="text-xs text-muted">{fmtDate(i.updated_at)}</span>
                             <p className="mt-0.5">{i.title}</p>
-                            {i.started_at ? (
-                              <p className="mt-0.5 text-xs text-muted"><IssueTimeLine startedAt={i.started_at} completedAt={i.completed_at} /></p>
+                            {i.started_at || (d.timeEntries ?? []).some((e) => e.issue_id === i.id) ? (
+                              <p className="mt-0.5 text-xs text-muted">
+                                <IssueTimeLine startedAt={i.started_at} completedAt={i.completed_at}
+                                  entries={(d.timeEntries ?? []).filter((e) => e.issue_id === i.id)} />
+                              </p>
                             ) : null}
                           </li>
                         ))}

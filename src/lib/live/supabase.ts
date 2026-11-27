@@ -2,12 +2,14 @@ import type {
   LiveChecklistItem,
   LiveDecision,
   LiveIssue,
+  LiveNotification,
   LiveNotificationType,
   LiveOrgDepartment,
   LiveOrgEmployee,
   LiveProject,
   LiveRelease,
   LiveSyncRun,
+  LiveTimeEntry,
   OsDataset,
 } from './types'
 import type { Department as OfficeDepartment, Employee as OfficeEmployee, OfficeData } from '../../office/types'
@@ -66,6 +68,13 @@ const SELECTS = {
   notificationTypes: 'id,label,description,default_on,active&order=sort_order.asc',
   notificationPrefs: 'device_id,type_id,enabled',
   guardAlertsOpen: 'id,kind,message,status,created_at&status=eq.open&order=created_at.desc',
+  // مهاجرة 20261127000007 — جلب متسامح منفصل: فشل أي جدول من دول = null (غير متاح)
+  // ولا يُسقط القراءة الحية كلها (أعمدة التصميم المعتمد 3A-426/427).
+  appNotifications:
+    'id,type_id,title,body,entity_type,entity_id,route,severity,created_at,source&order=created_at.desc&limit=100',
+  notificationReads: 'notification_id',
+  timeEntries:
+    'id,issue_id,actor,started_at,ended_at,duration_minutes,origin,note&order=started_at.desc&limit=500',
   ledgerSeq: 'seq',
   // المقر الافتراضي (P2-09): طاقم المشهد من جداوله هو — لا يُخلط بسجل التنظيم.
   officeDepartments: 'id,name,color,sort_order&order=sort_order.asc',
@@ -151,6 +160,18 @@ export async function fetchLiveDataset(): Promise<OsDataset> {
         }
       : null
 
+  // جداول 20261127000007 بجلب متسامح مستقل (null عند أي فشل — «غير متاح من الحي»)
+  const [appNotificationRows, notificationReadRows, timeEntryRows] = await Promise.all([
+    getRows<Omit<LiveNotification, 'read'>>(base, 'pgos_notifications', SELECTS.appNotifications).catch(() => null),
+    getRows<{ notification_id: string }>(base, 'pgos_notification_reads', SELECTS.notificationReads).catch(() => null),
+    getRows<LiveTimeEntry>(base, 'pgos_time_entries', SELECTS.timeEntries).catch(() => null),
+  ])
+  const readIds = new Set((notificationReadRows ?? []).map((r) => r.notification_id))
+  const notifications: LiveNotification[] | null = appNotificationRows
+    ? appNotificationRows.map((n) => ({ ...n, read: readIds.has(n.id) }))
+    : null
+  const timeEntries: LiveTimeEntry[] | null = timeEntryRows
+
   const lastSync = syncRuns[0] ?? null
   return {
     source: 'live',
@@ -186,5 +207,7 @@ export async function fetchLiveDataset(): Promise<OsDataset> {
     office,
     // المواثيق مش في عقد القراءة الحي — «غير متاح من الحي» بصدق (null لا قائمة فاضية)
     projectCharters: null,
+    notifications,
+    timeEntries,
   }
 }
