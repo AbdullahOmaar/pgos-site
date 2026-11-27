@@ -20,8 +20,8 @@ export default function Kickoff() {
 
       <Card className="mb-4">
         <p className="text-sm leading-relaxed">
-          دي قايمة البداية الكاملة ({totalItems} بند في ٦ أقسام). المشروع الجديد بيستنسخ حزمة المرجع
-          الخمسة لنسخته هو قبل أي سطر كود، وبيعدّي على القايمة قسمًا بقسم.
+          دي قايمة البداية الكاملة ({totalItems} بند في {KICKOFF_SECTIONS.length} أقسام). المشروع الجديد
+          بيستنسخ حزمة المرجع الخمسة لنسخته هو قبل أي سطر كود، وبيعدّي على القايمة قسمًا بقسم.
         </p>
         <p className="mt-2 rounded-xl bg-soft px-3 py-2 text-xs leading-relaxed">
           ⚠️ <b>التسجيل مش هنا:</b> مربعات الاختيار دي للعرض بس والحالة مش بتتحفظ من المتصفح —
