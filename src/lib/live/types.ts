@@ -170,6 +170,10 @@ export interface LiveEnvironment {
   checked_at: string | null
   repo_dev: string | null
   repo_company: string | null
+  account_supabase: string | null
+  account_hosting: string | null
+  account_repo: string | null
+  account_drive: string | null
   note: string | null
   sort_order?: number
 }

@@ -77,7 +77,7 @@ const SELECTS = {
   timeEntries:
     'id,issue_id,actor,started_at,ended_at,duration_minutes,origin,note&order=started_at.desc&limit=500',
   environments:
-    'project_ref,project_name,env_key,env_label,url,hosting,version,last_deploy_at,status,http_code,checked_at,repo_dev,repo_company,note,sort_order&order=sort_order.asc',
+    'project_ref,project_name,env_key,env_label,url,hosting,version,last_deploy_at,status,http_code,checked_at,repo_dev,repo_company,account_supabase,account_hosting,account_repo,account_drive,note,sort_order&order=sort_order.asc',
   ledgerSeq: 'seq',
   // المقر الافتراضي (P2-09): طاقم المشهد من جداوله هو — لا يُخلط بسجل التنظيم.
   officeDepartments: 'id,name,color,sort_order&order=sort_order.asc',

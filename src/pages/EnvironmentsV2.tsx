@@ -55,6 +55,17 @@ function EnvRow({ e }: { e: LiveEnvironment }) {
           ) : <Dash v={null} />}
         </dd>
       </dl>
+      <p className="mt-3 mb-1 text-xs font-bold text-muted">الحسابات — كل حاجة على حساب مين</p>
+      <dl className="grid grid-cols-[5.5rem_1fr] gap-y-1 text-[13px]">
+        <dt className="text-muted">قاعدة البيانات</dt>
+        <dd><Dash v={e.account_supabase} /></dd>
+        <dt className="text-muted">حساب الاستضافة</dt>
+        <dd><Dash v={e.account_hosting} /></dd>
+        <dt className="text-muted">حساب الريبو</dt>
+        <dd><Dash v={e.account_repo} /></dd>
+        <dt className="text-muted">نسخ Drive</dt>
+        <dd><Dash v={e.account_drive} /></dd>
+      </dl>
       {e.note ? (
         <p className="mt-2 rounded-xl border border-warn/40 bg-warn/10 px-3 py-2 text-xs leading-relaxed">📌 {e.note}</p>
       ) : null}
