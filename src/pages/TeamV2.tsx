@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { Chip, EmptyState, ErrorState, LoadingState } from '../components/ui'
 import { FreshnessBadge } from '../components/v2/widgets'
@@ -17,6 +17,16 @@ export default function TeamV2() {
   const state = useOsData()
   const [filter, setFilter] = useState<string>('all')
   const [selected, setSelected] = useState<LiveOrgEmployee | null>(null)
+
+  /* رابط عميق لبطاقة عضو: ‎#member-<id>‎ بيفتح ورقة تفاصيله */
+  useEffect(() => {
+    if (state.phase !== 'ready') return
+    const m = window.location.hash.match(/^#member-(.+)$/)
+    if (m) {
+      const hit = state.data.orgEmployees.find((e) => e.id === m[1])
+      if (hit) setSelected(hit)
+    }
+  }, [state])
 
   const groups = useMemo(() => {
     if (state.phase !== 'ready') return []
