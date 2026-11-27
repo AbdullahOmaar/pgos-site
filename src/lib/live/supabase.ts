@@ -2,6 +2,7 @@ import type {
   LiveChecklistItem,
   LiveDecision,
   LiveIssue,
+  LiveEnvironment,
   LiveNotification,
   LiveNotificationType,
   LiveOrgDepartment,
@@ -75,6 +76,8 @@ const SELECTS = {
   notificationReads: 'notification_id',
   timeEntries:
     'id,issue_id,actor,started_at,ended_at,duration_minutes,origin,note&order=started_at.desc&limit=500',
+  environments:
+    'project_ref,project_name,env_key,env_label,url,hosting,version,last_deploy_at,status,http_code,checked_at,repo_dev,repo_company,note,sort_order&order=sort_order.asc',
   ledgerSeq: 'seq',
   // المقر الافتراضي (P2-09): طاقم المشهد من جداوله هو — لا يُخلط بسجل التنظيم.
   officeDepartments: 'id,name,color,sort_order&order=sort_order.asc',
@@ -168,10 +171,11 @@ export async function fetchLiveDataset(): Promise<OsDataset> {
       : null
 
   // جداول 20261127000007 بجلب متسامح مستقل (null عند أي فشل — «غير متاح من الحي»)
-  const [appNotificationRows, notificationReadRows, timeEntryRows] = await Promise.all([
+  const [appNotificationRows, notificationReadRows, timeEntryRows, environmentRows] = await Promise.all([
     getRows<Omit<LiveNotification, 'read'>>(base, 'pgos_notifications', SELECTS.appNotifications).catch(() => null),
     getRows<{ notification_id: string }>(base, 'pgos_notification_reads', SELECTS.notificationReads).catch(() => null),
     getRows<LiveTimeEntry>(base, 'pgos_time_entries', SELECTS.timeEntries).catch(() => null),
+    getRows<LiveEnvironment>(base, 'pgos_environments', SELECTS.environments).catch(() => null),
   ])
   const readIds = new Set((notificationReadRows ?? []).map((r) => r.notification_id))
   const notifications: LiveNotification[] | null = appNotificationRows
@@ -216,5 +220,6 @@ export async function fetchLiveDataset(): Promise<OsDataset> {
     projectCharters: null,
     notifications,
     timeEntries,
+    environments: environmentRows,
   }
 }

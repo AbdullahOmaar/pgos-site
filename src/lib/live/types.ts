@@ -151,6 +151,27 @@ export interface OsDataset {
      read في الإشعار = له قيد في pgos_notification_reads على أي جهاز للمالك. */
   notifications: LiveNotification[] | null
   timeEntries: LiveTimeEntry[] | null
+  /* سجل البيئات (مهاجرة 20261128000008): null = غير متاح من هذا المصدر.
+     الحالة من فحص فعلي كل ٣٠ دقيقة (tools/env_check.py) — checked_at كما هو. */
+  environments: LiveEnvironment[] | null
+}
+
+export interface LiveEnvironment {
+  project_ref: string
+  project_name: string
+  env_key: string
+  env_label: string
+  url: string | null
+  hosting: string | null
+  version: string | null
+  last_deploy_at: string | null
+  status: string
+  http_code: number | null
+  checked_at: string | null
+  repo_dev: string | null
+  repo_company: string | null
+  note: string | null
+  sort_order?: number
 }
 
 export interface LiveNotification {

@@ -100,6 +100,7 @@ function fromSnapshot(d: SiteData): OsDataset {
     projectCharters: (d.records.projects ?? []) as unknown as Record<string, unknown>[],
     notifications: null,
     timeEntries: null,
+    environments: d.environments ?? null,
   }
 }
 

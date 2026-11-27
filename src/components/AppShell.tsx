@@ -16,6 +16,7 @@ const LINKS = [
   { to: '/os/org', label: 'التنظيم والفريق', icon: '👥' },
   { to: '/os/kickoff', label: 'بداية مشروع', icon: '🚀' },
   { to: '/os/team', label: 'فريق الـAI', icon: '🤖' },
+  { to: '/os/environments', label: 'البيئات', icon: '🌐' },
   { to: '/os/decisions', label: 'القرارات', icon: '⚖️' },
   { to: '/work-orders', label: 'أوامر الشغل', icon: '📋' },
   { to: '/risks', label: 'المخاطر', icon: '⚠️' },
