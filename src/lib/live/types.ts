@@ -168,7 +168,17 @@ export interface OsDataset {
     runs: LiveTestRun[]
     results: LiveTestResult[]
     defects: LiveTestDefect[]
+    testers: LiveTester[]
   } | null
+}
+
+export interface LiveTester {
+  id: string
+  display_name: string
+  kind: string
+  role: string
+  active: boolean
+  note: string | null
 }
 
 export interface LiveTestCase {
@@ -191,6 +201,7 @@ export interface LiveTestRun {
   label: string
   environment: string
   executor: string
+  tester_id: string | null
   run_at: string
   build_ref: string | null
   note: string | null
@@ -200,6 +211,7 @@ export interface LiveTestResult {
   run_id: string
   case_id: string
   result: string
+  tester_id: string | null
   evidence_url: string | null
   note: string | null
 }

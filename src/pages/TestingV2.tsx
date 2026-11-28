@@ -12,6 +12,8 @@ import type { LiveTestDefect, LiveTestRun } from '../lib/live/types'
  * تعريفات ثابتة (لا إعادة تعريف): «منفذة» = كيس لها نتيجة مسجلة في تشغيلة واحدة
  * على الأقل · نسبة النجاح = ناجح ÷ (ناجح + فاشل + جزئي + موقوف) — «متخطّى» بره
  * المقام لأنه لم يُقَس أصلًا. قراءة فقط تمامًا؛ غياب البيانات = «غير متاح» صريحة.
+ * كل تشغيلة ونتيجة باسم منفّذها من سجل المختبِرين pgos_testers (مهاجرة 000013 —
+ * إضافة مالك: اللي بيختبروا سند وزين ومعز والمسارات، لا سند بس).
  */
 const RESULT: Record<string, { label: string; tone: 'ok' | 'bad' | 'warn' | 'muted' }> = {
   pass: { label: 'ناجح', tone: 'ok' },
@@ -41,6 +43,20 @@ const DEFECT_STATUS: Record<string, string> = {
   fixed: 'اتصلح',
   retested: 'أُعيد اختباره',
   accepted_risk: 'مخاطرة مقبولة',
+}
+
+const TESTER_ROLE: Record<string, string> = {
+  tester: 'مختبِر',
+  reviewer: 'مراجع مستقل',
+  qa: 'QA',
+  automated: 'آلي',
+  owner: 'المالك',
+}
+
+const TESTER_KIND: Record<string, string> = {
+  human: 'بشري',
+  track: 'مسار',
+  system: 'نظام',
 }
 
 function Bar({ value }: { value: number }) {
@@ -109,6 +125,18 @@ export default function TestingV2() {
     for (const r of rs) by[r.result] = (by[r.result] ?? 0) + 1
     return { total: rs.length, by }
   }
+
+  const testerOf = (id: string | null) => (id ? (t?.testers ?? []).find((x) => x.id === id) ?? null : null)
+
+  // نشاط كل مختبِر مسجل في المشروع الحالي (من تشغيلاته ونتائجه المسماة)
+  const testerActivity = (t?.testers ?? []).map((tester) => {
+    const myRuns = runs.filter((r) => r.tester_id === tester.id)
+    const myResults = results.filter((r) => r.tester_id === tester.id)
+    const by: Record<string, number> = {}
+    for (const r of myResults) by[r.result] = (by[r.result] ?? 0) + 1
+    const last = myRuns.length ? myRuns.map((r) => r.run_at).sort().slice(-1)[0] : null
+    return { tester, runs: myRuns.length, total: myResults.length, by, last }
+  })
 
   // حسابات عادية بعد بوابات التحميل/الخطأ (لا hooks تحت إرجاع شرطي — درس خطأ React #310)
   const moduleMap = new Map<string, { written: number; executed: number }>()
@@ -202,6 +230,13 @@ export default function TestingV2() {
                             {fmtDate(run.run_at)} · {run.environment} · المنفّذ: {run.executor}
                             {run.build_ref ? ` · البناء: ${run.build_ref}` : ''}
                           </p>
+                          {run.tester_id ? (
+                            <p className="mt-1.5">
+                              <Chip tone="muted">🧪 {testerOf(run.tester_id)?.display_name ?? run.tester_id}
+                                {testerOf(run.tester_id) ? ` · ${TESTER_ROLE[testerOf(run.tester_id)!.role] ?? testerOf(run.tester_id)!.role}` : ''}
+                              </Chip>
+                            </p>
+                          ) : null}
                           <p className="mt-2 flex flex-wrap gap-1.5">
                             {Object.entries(b.by).map(([res, n]) => (
                               <Chip key={res} tone={RESULT[res]?.tone ?? 'muted'}>{RESULT[res]?.label ?? res} {n}</Chip>
@@ -214,6 +249,40 @@ export default function TestingV2() {
                     })}
                   </div>
                 )}
+              </Card>
+
+              <Card>
+                <p className="mb-2 text-sm font-bold">المختبِرون المسجلون ({testerActivity.length})</p>
+                <p className="mb-2 text-[11px] leading-relaxed text-muted">
+                  كل نتيجة اختبار تتولد جوه اوس باسم منفّذها — السجل ده هو مرجع «مين اختبر إيه»، والنشاط اللي تحت محسوب من تشغيلات ونتائج المشروع الحالي المسماة.
+                </p>
+                <div className="space-y-2">
+                  {testerActivity.map(({ tester, runs: myRuns, total, by, last }) => (
+                    <div key={tester.id} className="rounded-xl border border-line px-3 py-2">
+                      <p className="flex flex-wrap items-center gap-2 text-[13px]">
+                        <span className="font-bold">{tester.display_name}</span>
+                        <Chip tone="muted">{TESTER_ROLE[tester.role] ?? tester.role}</Chip>
+                        <Chip tone="muted">{TESTER_KIND[tester.kind] ?? tester.kind}</Chip>
+                        {!tester.active ? <Chip tone="warn">غير نشط</Chip> : null}
+                      </p>
+                      {total > 0 || myRuns > 0 ? (
+                        <>
+                          <p className="mt-1 text-[11px] text-muted">
+                            {myRuns} تشغيلة · {total} نتيجة{last ? ` · آخر نشاط: ${fmtDate(last)}` : ''}
+                          </p>
+                          <p className="mt-1.5 flex flex-wrap gap-1.5">
+                            {Object.entries(by).map(([res, n]) => (
+                              <Chip key={res} tone={RESULT[res]?.tone ?? 'muted'}>{RESULT[res]?.label ?? res} {n}</Chip>
+                            ))}
+                          </p>
+                        </>
+                      ) : (
+                        <p className="mt-1 text-[11px] text-muted">لا نشاط مسجل بعد في هذا المشروع.</p>
+                      )}
+                      {tester.note ? <p className="mt-1 text-[11px] leading-relaxed text-muted">{tester.note}</p> : null}
+                    </div>
+                  ))}
+                </div>
               </Card>
 
               <Card>

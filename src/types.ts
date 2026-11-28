@@ -290,6 +290,7 @@ export interface SiteData {
       label: string
       environment: string
       executor: string
+      tester_id: string | null
       run_at: string
       build_ref: string | null
       note: string | null
@@ -298,7 +299,16 @@ export interface SiteData {
       run_id: string
       case_id: string
       result: string
+      tester_id: string | null
       evidence_url: string | null
+      note: string | null
+    }[]
+    testers: {
+      id: string
+      display_name: string
+      kind: string
+      role: string
+      active: boolean
       note: string | null
     }[]
     defects: {
