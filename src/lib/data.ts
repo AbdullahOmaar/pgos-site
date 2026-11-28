@@ -44,11 +44,12 @@ export function useSiteData(): DataState {
       .then((data) => {
         if (alive) setState({ phase: 'ready', data })
       })
-      .catch((e: unknown) => {
+      .catch(() => {
         if (alive)
           setState({
             phase: 'error',
-            message: e instanceof Error ? e.message : 'خطأ غير معروف',
+            /* رسالة ثابتة مهذبة — الخطأ الخام لا يعدي لطبقة العرض أبدًا (قاعدة 2026-11-26) */
+            message: 'تعذّر جلب البيانات',
           })
       })
     return () => {

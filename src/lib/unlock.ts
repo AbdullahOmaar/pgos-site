@@ -60,10 +60,11 @@ export async function unlock(): Promise<UnlockResult> {
   let bundle: VaultBundle | null
   try {
     bundle = await fetchBundle()
-  } catch (err) {
+  } catch {
+    /* رسالة مهذبة ثابتة — لا رسائل خام قدام المستخدم (قاعدة 2026-11-26) */
     return {
       status: 'error',
-      message: err instanceof Error ? err.message : 'تعذّر جلب اللقطة المشفرة',
+      message: 'تعذّر فتح اللقطة المشفرة على الجهاز ده — حدّث الصفحة وحاول تاني',
     }
   }
   if (!bundle) return { status: 'plain' }
@@ -84,12 +85,11 @@ export async function unlock(): Promise<UnlockResult> {
     if (err instanceof VaultError && err.code === 'NO_WRAP') {
       return { status: 'no-wrap' }
     }
-    const message =
-      err instanceof VaultError
-        ? `فشل فك التشفير (${err.code})`
-        : err instanceof Error
-          ? err.message
-          : 'حدث خطأ غير متوقع أثناء فتح اللقطة'
-    return { status: 'error', message }
+    /* لا أكواد ولا رسائل خام (قاعدة 2026-11-26) — الكود بيتسجل في الكونسول للمطور بس */
+    console.warn('[vault] unlock failed:', err instanceof VaultError ? err.code : 'unknown')
+    return {
+      status: 'error',
+      message: 'تعذّر فتح اللقطة المشفرة على الجهاز ده — حدّث الصفحة وحاول تاني',
+    }
   }
 }

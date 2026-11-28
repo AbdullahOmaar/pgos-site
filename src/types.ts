@@ -1,5 +1,7 @@
 /* أنواع نموذج العرض — مصدرها الوحيد public/data/site-data.json المولّد آليًا */
 
+import type { OfficeData } from './office/types'
+
 export interface SourceFreshness {
   source: string
   files?: number
@@ -208,6 +210,9 @@ export interface LinearIssue {
   dueDate?: string | null
   url?: string
   projectUuid?: string
+  startedAt?: string | null
+  completedAt?: string | null
+  archivedAt?: string | null
   updatedAt?: string
 }
 
@@ -243,6 +248,154 @@ export interface SiteData {
   hq_decisions: HqDecisions
   preprod_checklist: PreprodChecklist
   governance_ref: GovernanceRef
+  /* بيانات المقر الافتراضي من قاعدة اوس (P2-09) — غائبة لو تعذّرت قراءتها وقت التوليد */
+  office?: OfficeData | null
+  /* مؤشرات صحة المشاريع من قاعدة اوس (مهاجرة 20261128000011) — غائبة لو تعذّرت قراءتها وقت التوليد */
+  project_health?: {
+    project_ref: string
+    project_name: string
+    week_start: string
+    phase_label: string | null
+    phase_pct: number | null
+    phase_pct_week_ago: number | null
+    weekly_delta_pp: number | null
+    dev_rate_pct: number | null
+    completed_week: number
+    completed_3d: number
+    sprint_done: number | null
+    sprint_total: number | null
+    sprint_pct: number | null
+    health: string
+    health_reason: string
+    computed_at: string
+  }[] | null
+  /* وحدة الاختبار من قاعدة اوس (مهاجرة 20261128000012) — غائبة لو تعذّرت قراءتها وقت التوليد */
+  testing?: {
+    cases: {
+      id: string
+      project_ref: string
+      project_name: string
+      module: string
+      title: string
+      kind: string
+      case_state: string
+      source: string
+      note: string | null
+      sort_order: number
+    }[]
+    runs: {
+      id: string
+      project_ref: string
+      project_name: string
+      label: string
+      environment: string
+      executor: string
+      tester_id: string | null
+      run_at: string
+      build_ref: string | null
+      note: string | null
+    }[]
+    results: {
+      run_id: string
+      case_id: string
+      result: string
+      tester_id: string | null
+      evidence_url: string | null
+      note: string | null
+    }[]
+    testers: {
+      id: string
+      display_name: string
+      kind: string
+      role: string
+      active: boolean
+      note: string | null
+    }[]
+    defects: {
+      id: string
+      project_ref: string
+      project_name: string
+      case_id: string | null
+      title: string
+      severity: string
+      status: string
+      source: string
+      evidence_url: string | null
+      opened_at: string
+      closed_at: string | null
+      note: string | null
+    }[]
+  } | null
+  /* دورة حياة المشروع من قاعدة اوس (مهاجرة 20261128000010) — غائبة لو تعذّرت قراءتها وقت التوليد */
+  lifecycle?: {
+    steps: {
+      step_key: string
+      section: string
+      title: string
+      description: string | null
+      sort_order: number
+    }[]
+    states: {
+      project_ref: string
+      project_name: string
+      step_key: string
+      status: string
+      note: string | null
+      updated_at: string
+    }[]
+  } | null
+  /* سجل البيئات من قاعدة اوس (مهاجرة 20261128000008) — غائب لو تعذّرت قراءته وقت التوليد */
+  environments?: {
+    project_ref: string
+    project_name: string
+    env_key: string
+    env_label: string
+    url: string | null
+    hosting: string | null
+    version: string | null
+    last_deploy_at: string | null
+    status: string
+    http_code: number | null
+    checked_at: string | null
+    repo_dev: string | null
+    repo_company: string | null
+    account_supabase: string | null
+    account_hosting: string | null
+    account_repo: string | null
+    account_drive: string | null
+    note: string | null
+    sort_order?: number
+  }[] | null
+  /* سجل التنظيم والإشعارات من قاعدة اوس — غائب لو تعذّرت قراءته وقت التوليد */
+  org?: {
+    departments: {
+      id: string
+      name: string
+      color: string | null
+      description: string | null
+      projects: string[]
+      sort_order: number
+    }[]
+    employees: {
+      id: string
+      name: string
+      initial: string | null
+      color: string | null
+      dept_name: string | null
+      role: string | null
+      status: string | null
+      group_name: string | null
+      project_ref: string | null
+    }[]
+    notification_types: {
+      id: string
+      label: string
+      description: string | null
+      default_on: boolean
+      active: boolean
+    }[]
+    notification_prefs_count: number
+  } | null
   guard: {
     state: {
       last_run?: string

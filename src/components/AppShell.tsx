@@ -1,19 +1,34 @@
 import { useEffect, useState, type ReactNode } from 'react'
 import { NavLink } from 'react-router-dom'
+import VersionLine from './VersionLine'
 
+/*
+ * روابط التنقل الرئيسية — بتشاور على الواجهة الجديدة (/os/* و/dashboard) أينما
+ * وُجد مقابل جديد (تشخيص 2026-11-26: الروابط القديمة كانت بتودّي المالك لسجلات
+ * الحوكمة القديمة فشاف «بروجكتين بس» بدل الـ9 الحقيقيين).
+ * الصفحات القديمة نفسها routes شغالة ومتاحة بروابطها — التغيير في التنقل بس.
+ */
 const LINKS = [
-  { to: '/', label: 'نظرة عامة', icon: '🏠' },
-  { to: '/projects', label: 'المشاريع', icon: '🗂️' },
-  { to: '/decisions', label: 'القرارات', icon: '⚖️' },
+  { to: '/', label: 'المقر الافتراضي', icon: '🏢' },
+  { to: '/dashboard', label: 'نظرة عامة', icon: '🏠' },
+  { to: '/os/projects', label: 'المشاريع', icon: '🗂️' },
+  { to: '/os/notifications', label: 'الإشعارات', icon: '🔔' },
+  { to: '/os/org', label: 'التنظيم والفريق', icon: '👥' },
+  { to: '/os/kickoff', label: 'بداية مشروع', icon: '🚀' },
+  { to: '/os/team', label: 'فريق الـAI', icon: '🤖' },
+  { to: '/os/environments', label: 'البيئات', icon: '🌐' },
+  { to: '/os/lifecycle', label: 'دورة الحياة', icon: '🔄' },
+  { to: '/os/testing', label: 'الاختبار', icon: '🧪' },
+  { to: '/os/decisions', label: 'القرارات', icon: '⚖️' },
   { to: '/work-orders', label: 'أوامر الشغل', icon: '📋' },
   { to: '/risks', label: 'المخاطر', icon: '⚠️' },
   { to: '/evidence', label: 'الأدلة والإصدارات', icon: '🧾' },
   { to: '/ledger', label: 'سجل الشركة', icon: '⛓️' },
   { to: '/completeness', label: 'الاكتمال', icon: '✅' },
   { to: '/validation', label: 'حالة التحقق', icon: '🔍' },
-  { to: '/preprod', label: 'فحص ما قبل الإنتاج', icon: '🧪' },
-  { to: '/tasks', label: 'التاسكات', icon: '📌' },
-  { to: '/hq-decisions', label: 'قرارات المقر', icon: '🏛️' },
+  { to: '/os/preprod', label: 'فحص ما قبل الإنتاج', icon: '🧪' },
+  { to: '/os/tasks', label: 'التاسكات', icon: '📌' },
+  { to: '/os/decisions', label: 'قرارات المقر', icon: '🏛️' },
   { to: '/reports', label: 'التقارير', icon: '📰' },
   { to: '/authority', label: 'السلطة والأدوار', icon: '🧭' },
   { to: '/adoption', label: 'التبنّي والفجوات', icon: '📐' },
@@ -63,6 +78,8 @@ export default function AppShell({ children }: { children: ReactNode }) {
             <p className="truncate text-xs text-muted">
               3A Automation · مرآة قراءة فقط من المصادر الكانونية
             </p>
+            {/* سطر الإصدار ووقت النشر — قاعدة مالك ملزمة 2026-11-25، من بيانات البناء */}
+            <VersionLine className="truncate text-xs font-bold text-primary" />
           </div>
           <button
             type="button"
