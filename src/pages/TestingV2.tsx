@@ -110,23 +110,19 @@ export default function TestingV2() {
     return { total: rs.length, by }
   }
 
-  const modules = useMemo(() => {
-    const map = new Map<string, { written: number; executed: number }>()
-    for (const c of written) {
-      const m = map.get(c.module) ?? { written: 0, executed: 0 }
-      m.written += 1
-      if (executedIds.has(c.id)) m.executed += 1
-      map.set(c.module, m)
-    }
-    return [...map.entries()].sort((a, b) => b[1].written - a[1].written)
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [current, t])
+  // حسابات عادية بعد بوابات التحميل/الخطأ (لا hooks تحت إرجاع شرطي — درس خطأ React #310)
+  const moduleMap = new Map<string, { written: number; executed: number }>()
+  for (const c of written) {
+    const m = moduleMap.get(c.module) ?? { written: 0, executed: 0 }
+    m.written += 1
+    if (executedIds.has(c.id)) m.executed += 1
+    moduleMap.set(c.module, m)
+  }
+  const modules = [...moduleMap.entries()].sort((a, b) => b[1].written - a[1].written)
 
-  const kindCounts = useMemo(() => {
-    const map = new Map<string, number>()
-    for (const c of written) map.set(c.kind, (map.get(c.kind) ?? 0) + 1)
-    return [...map.entries()]
-  }, [written])
+  const kindMap = new Map<string, number>()
+  for (const c of written) kindMap.set(c.kind, (kindMap.get(c.kind) ?? 0) + 1)
+  const kindCounts = [...kindMap.entries()]
 
   return (
     <div dir="rtl">
