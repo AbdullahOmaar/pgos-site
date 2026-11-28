@@ -28,7 +28,14 @@ MIGRATIONS = ["20261123000001_initial_schema.sql",
               "20261123000003_decisions_releases_and_checklist.sql",
               "20261125000004_m2_core_org_office_notifications.sql",
               "20261125000005_m2_rest_devices_sprints_production.sql",
-              "20261125000006_g1_owner_bound_rls.sql"]
+              "20261125000006_g1_owner_bound_rls.sql",
+              "20261127000007_notifications_time_entries.sql",
+              "20261128000008_environments_registry.sql",
+              "20261128000009_environments_accounts.sql",
+              "20261128000010_project_lifecycle.sql",
+              "20261128000011_project_health.sql",
+              "20261128000012_testing_unit.sql",
+              "20261128000013_testers.sql"]
 
 for mig in MIGRATIONS:
     with open(f"{BASE}/supabase/migrations/{mig}") as f:

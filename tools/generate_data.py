@@ -689,6 +689,127 @@ def fetch_org():
         return None
 
 
+def fetch_environments():
+    """سجل البيئات الموحّد من قاعدة اوس (pgos_environments) — تكليف مالك
+    2026-11-28: القاعدة هي مصدر العرض الوحيد. اختياري زي المكتب/السجل."""
+    try:
+        sys.path.insert(0, os.path.expanduser(
+            "~/workspace/custom-connectors/custom.supabase/bin"))
+        from supabase_api import call
+        q = (
+            "select json_agg(row_to_json(e) order by e.sort_order) as envs from "
+            "(select project_ref, project_name, env_key, env_label, url, hosting, "
+            "version, last_deploy_at, status, http_code, checked_at, repo_dev, account_supabase, account_hosting, account_repo, account_drive, "
+            "repo_company, note, sort_order from public.pgos_environments) e"
+        )
+        rows = call("POST", f"/v1/projects/{PGOS_REF}/database/query", {"query": q})
+        envs = rows[0]["envs"] or []
+        for e in envs:
+            e.pop("sort_order", None)  # ترتيب داخلي
+        print(f"  سجل بيئات من القاعدة: {len(envs)} بيئة")
+        return envs
+    except Exception as exc:  # مصدر اختياري — لا يقتل التوليد أبدًا
+        print(f"  تنبيه: تعذّرت قراءة سجل البيئات من القاعدة ({exc}) — اللقطة بلا بيئات")
+        return None
+
+def fetch_lifecycle():
+    """خطوات دورة حياة المشروع من قاعدة اوس (pgos_lifecycle_steps +
+    pgos_project_lifecycle) — توسيع مالك 2026-11-28. اختياري زي البيئات."""
+    try:
+        sys.path.insert(0, os.path.expanduser(
+            "~/workspace/custom-connectors/custom.supabase/bin"))
+        from supabase_api import call
+        q = (
+            "select json_build_object("
+            "'steps', (select json_agg(row_to_json(s) order by s.sort_order) from "
+            "(select step_key, section, title, description, sort_order "
+            "from public.pgos_lifecycle_steps) s), "
+            "'states', (select json_agg(row_to_json(x) order by x.project_ref, x.sort_order) from "
+            "(select l.project_ref, l.project_name, l.step_key, l.status, l.note, "
+            "l.updated_at, s.sort_order from public.pgos_project_lifecycle l "
+            "join public.pgos_lifecycle_steps s on s.step_key = l.step_key) x)"
+            ") as lifecycle"
+        )
+        rows = call("POST", f"/v1/projects/{PGOS_REF}/database/query", {"query": q})
+        lc = rows[0]["lifecycle"]
+        for s in lc["steps"] or []:
+            s.pop("sort_order", None)
+        for x in lc["states"] or []:
+            x.pop("sort_order", None)
+        print(f"  دورة حياة من القاعدة: {len(lc['steps'] or [])} خطوة / "
+              f"{len(lc['states'] or [])} حالة مشروع")
+        return lc
+    except Exception as exc:  # مصدر اختياري — لا يقتل التوليد أبدًا
+        print(f"  تنبيه: تعذّرت قراءة دورة الحياة من القاعدة ({exc}) — اللقطة بلا دورة حياة")
+        return None
+
+def fetch_health():
+    """مؤشرات صحة المشاريع + نسبة التطور الأسبوعية (pgos_project_health) —
+    3A-357 الجزء ب/ج. اختياري زي البيئات ودورة الحياة."""
+    try:
+        sys.path.insert(0, os.path.expanduser(
+            "~/workspace/custom-connectors/custom.supabase/bin"))
+        from supabase_api import call
+        q = (
+            "select json_agg(row_to_json(h) order by h.project_ref) as health from "
+            "(select project_ref, project_name, week_start, phase_label, phase_pct, "
+            "phase_pct_week_ago, weekly_delta_pp, dev_rate_pct, completed_week, "
+            "completed_3d, sprint_done, sprint_total, sprint_pct, health, health_reason, "
+            "computed_at from public.pgos_project_health "
+            "where week_start = (select max(week_start) from public.pgos_project_health)) h"
+        )
+        rows = call("POST", f"/v1/projects/{PGOS_REF}/database/query", {"query": q})
+        health = rows[0]["health"] or []
+        print(f"  مؤشرات صحة من القاعدة: {len(health)} صف (أحدث أسبوع)")
+        return health
+    except Exception as exc:  # مصدر اختياري — لا يقتل التوليد أبدًا
+        print(f"  تنبيه: تعذّرت قراءة مؤشرات الصحة من القاعدة ({exc}) — اللقطة بلا مؤشرات")
+        return None
+
+
+def fetch_testing():
+    """وحدة الاختبار (pgos_test_* — مهاجرة 000012): كيسز + تشغيلات + نتائج + عيوب.
+    اختياري زي البيئات ودورة الحياة والمؤشرات."""
+    try:
+        sys.path.insert(0, os.path.expanduser(
+            "~/workspace/custom-connectors/custom.supabase/bin"))
+        from supabase_api import call
+        q = (
+            "select "
+            "(select json_agg(row_to_json(c) order by c.sort_order) from "
+            "(select id, project_ref, project_name, module, title, kind, case_state, source, note, sort_order "
+            "from public.pgos_test_cases) c) as cases, "
+            "(select json_agg(row_to_json(u) order by u.run_at) from "
+            "(select id, project_ref, project_name, label, environment, executor, tester_id, run_at, build_ref, note "
+            "from public.pgos_test_runs) u) as runs, "
+            "(select json_agg(row_to_json(r)) from "
+            "(select run_id, case_id, result, tester_id, evidence_url, note "
+            "from public.pgos_test_results) r) as results, "
+            "(select json_agg(row_to_json(x) order by x.display_name) from "
+            "(select id, display_name, kind, role, active, note "
+            "from public.pgos_testers) x) as testers, "
+            "(select json_agg(row_to_json(d) order by d.opened_at) from "
+            "(select id, project_ref, project_name, case_id, title, severity, status, source, evidence_url, opened_at, closed_at, note "
+            "from public.pgos_defects) d) as defects"
+        )
+        rows = call("POST", f"/v1/projects/{PGOS_REF}/database/query", {"query": q})
+        row = rows[0]
+        testing = {
+            "cases": row["cases"] or [],
+            "runs": row["runs"] or [],
+            "results": row["results"] or [],
+            "defects": row["defects"] or [],
+            "testers": row["testers"] or [],
+        }
+        print(f"  وحدة الاختبار من القاعدة: {len(testing['cases'])} كيس / "
+              f"{len(testing['runs'])} تشغيلة / {len(testing['results'])} نتيجة / "
+              f"{len(testing['defects'])} عيب / {len(testing['testers'])} مختبِر")
+        return testing
+    except Exception as exc:  # مصدر اختياري — لا يقتل التوليد أبدًا
+        print(f"  تنبيه: تعذّرت قراءة وحدة الاختبار من القاعدة ({exc}) — اللقطة بلا وحدة اختبار")
+        return None
+
+
 def main() -> int:
     records_dir = os.path.join(OPS, "pgos", "records")
     ledger_path = os.path.join(OPS, "ledger", "company-ledger.jsonl")
@@ -843,6 +964,10 @@ def main() -> int:
 
     office = fetch_office()
     org = fetch_org()
+    environments = fetch_environments()
+    lifecycle = fetch_lifecycle()
+    health = fetch_health()
+    testing = fetch_testing()
 
     data = {
         "meta": {
@@ -872,6 +997,10 @@ def main() -> int:
         },
         "office": office,
         "org": org,
+        "environments": environments,
+        "lifecycle": lifecycle,
+        "project_health": health,
+        "testing": testing,
         "internal_validation": {
             "kind": "internal_validation",
             "label": "تحقق داخلي بموقع PGOS — ليس فاليديتور PGOS الأصلي",
