@@ -154,6 +154,25 @@ export interface OsDataset {
   /* سجل البيئات (مهاجرة 20261128000008): null = غير متاح من هذا المصدر.
      الحالة من فحص فعلي كل ٣٠ دقيقة (tools/env_check.py) — checked_at كما هو. */
   environments: LiveEnvironment[] | null
+  /* دورة حياة المشروع (مهاجرة 20261128000010): null = غير متاح من هذا المصدر */
+  lifecycle: { steps: LiveLifecycleStep[]; states: LiveLifecycleState[] } | null
+}
+
+export interface LiveLifecycleStep {
+  step_key: string
+  section: string
+  title: string
+  description: string | null
+  sort_order: number
+}
+
+export interface LiveLifecycleState {
+  project_ref: string
+  project_name: string
+  step_key: string
+  status: string
+  note: string | null
+  updated_at: string
 }
 
 export interface LiveEnvironment {

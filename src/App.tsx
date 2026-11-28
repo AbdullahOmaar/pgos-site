@@ -28,6 +28,7 @@ import NotificationsV2 from './pages/NotificationsV2'
 import Kickoff from './pages/Kickoff'
 import TeamV2 from './pages/TeamV2'
 import EnvironmentsV2 from './pages/EnvironmentsV2'
+import LifecycleV2 from './pages/LifecycleV2'
 
 export default function App() {
   return (
@@ -46,6 +47,7 @@ export default function App() {
         <Route path="/os/kickoff" element={<Kickoff />} />
         <Route path="/os/team" element={<TeamV2 />} />
         <Route path="/os/environments" element={<EnvironmentsV2 />} />
+        <Route path="/os/lifecycle" element={<LifecycleV2 />} />
           <Route path="/overview" element={<Overview />} />
           <Route path="/projects" element={<Projects />} />
           <Route path="/decisions" element={<Decisions />} />

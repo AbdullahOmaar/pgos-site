@@ -250,6 +250,24 @@ export interface SiteData {
   governance_ref: GovernanceRef
   /* بيانات المقر الافتراضي من قاعدة اوس (P2-09) — غائبة لو تعذّرت قراءتها وقت التوليد */
   office?: OfficeData | null
+  /* دورة حياة المشروع من قاعدة اوس (مهاجرة 20261128000010) — غائبة لو تعذّرت قراءتها وقت التوليد */
+  lifecycle?: {
+    steps: {
+      step_key: string
+      section: string
+      title: string
+      description: string | null
+      sort_order: number
+    }[]
+    states: {
+      project_ref: string
+      project_name: string
+      step_key: string
+      status: string
+      note: string | null
+      updated_at: string
+    }[]
+  } | null
   /* سجل البيئات من قاعدة اوس (مهاجرة 20261128000008) — غائب لو تعذّرت قراءته وقت التوليد */
   environments?: {
     project_ref: string
