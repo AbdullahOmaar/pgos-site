@@ -269,6 +269,53 @@ export interface SiteData {
     health_reason: string
     computed_at: string
   }[] | null
+  /* وحدة الاختبار من قاعدة اوس (مهاجرة 20261128000012) — غائبة لو تعذّرت قراءتها وقت التوليد */
+  testing?: {
+    cases: {
+      id: string
+      project_ref: string
+      project_name: string
+      module: string
+      title: string
+      kind: string
+      case_state: string
+      source: string
+      note: string | null
+      sort_order: number
+    }[]
+    runs: {
+      id: string
+      project_ref: string
+      project_name: string
+      label: string
+      environment: string
+      executor: string
+      run_at: string
+      build_ref: string | null
+      note: string | null
+    }[]
+    results: {
+      run_id: string
+      case_id: string
+      result: string
+      evidence_url: string | null
+      note: string | null
+    }[]
+    defects: {
+      id: string
+      project_ref: string
+      project_name: string
+      case_id: string | null
+      title: string
+      severity: string
+      status: string
+      source: string
+      evidence_url: string | null
+      opened_at: string
+      closed_at: string | null
+      note: string | null
+    }[]
+  } | null
   /* دورة حياة المشروع من قاعدة اوس (مهاجرة 20261128000010) — غائبة لو تعذّرت قراءتها وقت التوليد */
   lifecycle?: {
     steps: {

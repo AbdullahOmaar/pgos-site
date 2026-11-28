@@ -159,6 +159,64 @@ export interface OsDataset {
   /* مؤشرات الصحة الأسبوعية (مهاجرة 20261128000011): null = غير متاح من هذا المصدر.
      dev_rate_pct = بنود المرحلة الحالية المكتملة في آخر 7 أيام ÷ إجمالي بنود المرحلة. */
   projectHealth: LiveProjectHealth[] | null
+  /* وحدة الاختبار (مهاجرة 20261128000012): null = غير متاح من هذا المصدر.
+     سجل منظّم: كيسز (بمعرّفات ثابتة ومصدر في مرجع الاختبار) + تشغيلات + نتيجة كل
+     كيس في كل تشغيلة + عيوب مرتبطة بالكيسز. خطوة دورة الحياة testing_registry
+     تتغذى من الجداول دي آليًا (tools/testing_feed.py) لا يدويًا. */
+  testing: {
+    cases: LiveTestCase[]
+    runs: LiveTestRun[]
+    results: LiveTestResult[]
+    defects: LiveTestDefect[]
+  } | null
+}
+
+export interface LiveTestCase {
+  id: string
+  project_ref: string
+  project_name: string
+  module: string
+  title: string
+  kind: string
+  case_state: string
+  source: string
+  note: string | null
+  sort_order: number
+}
+
+export interface LiveTestRun {
+  id: string
+  project_ref: string
+  project_name: string
+  label: string
+  environment: string
+  executor: string
+  run_at: string
+  build_ref: string | null
+  note: string | null
+}
+
+export interface LiveTestResult {
+  run_id: string
+  case_id: string
+  result: string
+  evidence_url: string | null
+  note: string | null
+}
+
+export interface LiveTestDefect {
+  id: string
+  project_ref: string
+  project_name: string
+  case_id: string | null
+  title: string
+  severity: string
+  status: string
+  source: string
+  evidence_url: string | null
+  opened_at: string
+  closed_at: string | null
+  note: string | null
 }
 
 export interface LiveProjectHealth {

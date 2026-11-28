@@ -18,6 +18,7 @@ const LINKS = [
   { to: '/os/team', label: 'فريق الـAI', icon: '🤖' },
   { to: '/os/environments', label: 'البيئات', icon: '🌐' },
   { to: '/os/lifecycle', label: 'دورة الحياة', icon: '🔄' },
+  { to: '/os/testing', label: 'الاختبار', icon: '🧪' },
   { to: '/os/decisions', label: 'القرارات', icon: '⚖️' },
   { to: '/work-orders', label: 'أوامر الشغل', icon: '📋' },
   { to: '/risks', label: 'المخاطر', icon: '⚠️' },

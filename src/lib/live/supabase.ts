@@ -13,6 +13,10 @@ import type {
   LiveProject,
   LiveRelease,
   LiveSyncRun,
+  LiveTestCase,
+  LiveTestDefect,
+  LiveTestResult,
+  LiveTestRun,
   LiveTimeEntry,
   OsDataset,
 } from './types'
@@ -82,6 +86,10 @@ const SELECTS = {
   lifecycleSteps: 'step_key,section,title,description,sort_order&order=sort_order.asc',
   lifecycleStates: 'project_ref,project_name,step_key,status,note,updated_at&limit=1000',
   projectHealth: 'project_ref,project_name,week_start,phase_label,phase_pct,phase_pct_week_ago,weekly_delta_pp,dev_rate_pct,completed_week,completed_3d,sprint_done,sprint_total,sprint_pct,health,health_reason,computed_at&order=project_ref.asc',
+  testCases: 'id,project_ref,project_name,module,title,kind,case_state,source,note,sort_order&order=sort_order.asc&limit=2000',
+  testRuns: 'id,project_ref,project_name,label,environment,executor,run_at,build_ref,note&order=run_at.desc&limit=500',
+  testResults: 'run_id,case_id,result,evidence_url,note&limit=5000',
+  testDefects: 'id,project_ref,project_name,case_id,title,severity,status,source,evidence_url,opened_at,closed_at,note&order=opened_at.desc&limit=1000',
   environments:
     'project_ref,project_name,env_key,env_label,url,hosting,version,last_deploy_at,status,http_code,checked_at,repo_dev,repo_company,account_supabase,account_hosting,account_repo,account_drive,note,sort_order&order=sort_order.asc',
   ledgerSeq: 'seq',
@@ -177,7 +185,7 @@ export async function fetchLiveDataset(): Promise<OsDataset> {
       : null
 
   // جداول 20261127000007 بجلب متسامح مستقل (null عند أي فشل — «غير متاح من الحي»)
-  const [appNotificationRows, notificationReadRows, timeEntryRows, environmentRows, lifecycleStepRows, lifecycleStateRows, projectHealthRows] = await Promise.all([
+  const [appNotificationRows, notificationReadRows, timeEntryRows, environmentRows, lifecycleStepRows, lifecycleStateRows, projectHealthRows, testCaseRows, testRunRows, testResultRows, testDefectRows] = await Promise.all([
     getRows<Omit<LiveNotification, 'read'>>(base, 'pgos_notifications', SELECTS.appNotifications).catch(() => null),
     getRows<{ notification_id: string }>(base, 'pgos_notification_reads', SELECTS.notificationReads).catch(() => null),
     getRows<LiveTimeEntry>(base, 'pgos_time_entries', SELECTS.timeEntries).catch(() => null),
@@ -185,6 +193,10 @@ export async function fetchLiveDataset(): Promise<OsDataset> {
     getRows<LiveLifecycleStep>(base, 'pgos_lifecycle_steps', SELECTS.lifecycleSteps).catch(() => null),
     getRows<LiveLifecycleState>(base, 'pgos_project_lifecycle', SELECTS.lifecycleStates).catch(() => null),
     getRows<LiveProjectHealth>(base, 'pgos_project_health', SELECTS.projectHealth).catch(() => null),
+    getRows<LiveTestCase>(base, 'pgos_test_cases', SELECTS.testCases).catch(() => null),
+    getRows<LiveTestRun>(base, 'pgos_test_runs', SELECTS.testRuns).catch(() => null),
+    getRows<LiveTestResult>(base, 'pgos_test_results', SELECTS.testResults).catch(() => null),
+    getRows<LiveTestDefect>(base, 'pgos_defects', SELECTS.testDefects).catch(() => null),
   ])
   const readIds = new Set((notificationReadRows ?? []).map((r) => r.notification_id))
   const notifications: LiveNotification[] | null = appNotificationRows
@@ -235,5 +247,9 @@ export async function fetchLiveDataset(): Promise<OsDataset> {
         ? { steps: lifecycleStepRows, states: lifecycleStateRows }
         : null,
     projectHealth: projectHealthRows,
+    testing:
+      testCaseRows && testRunRows && testResultRows && testDefectRows
+        ? { cases: testCaseRows, runs: testRunRows, results: testResultRows, defects: testDefectRows }
+        : null,
   }
 }
