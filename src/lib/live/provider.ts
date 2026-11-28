@@ -102,6 +102,7 @@ function fromSnapshot(d: SiteData): OsDataset {
     timeEntries: null,
     environments: d.environments ?? null,
     lifecycle: d.lifecycle ?? null,
+    projectHealth: d.project_health ?? null,
   }
 }
 

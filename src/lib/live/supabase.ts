@@ -4,6 +4,7 @@ import type {
   LiveIssue,
   LiveEnvironment,
   LiveLifecycleState,
+  LiveProjectHealth,
   LiveLifecycleStep,
   LiveNotification,
   LiveNotificationType,
@@ -80,6 +81,7 @@ const SELECTS = {
     'id,issue_id,actor,started_at,ended_at,duration_minutes,origin,note&order=started_at.desc&limit=500',
   lifecycleSteps: 'step_key,section,title,description,sort_order&order=sort_order.asc',
   lifecycleStates: 'project_ref,project_name,step_key,status,note,updated_at&limit=1000',
+  projectHealth: 'project_ref,project_name,week_start,phase_label,phase_pct,phase_pct_week_ago,weekly_delta_pp,dev_rate_pct,completed_week,completed_3d,sprint_done,sprint_total,sprint_pct,health,health_reason,computed_at&order=project_ref.asc',
   environments:
     'project_ref,project_name,env_key,env_label,url,hosting,version,last_deploy_at,status,http_code,checked_at,repo_dev,repo_company,account_supabase,account_hosting,account_repo,account_drive,note,sort_order&order=sort_order.asc',
   ledgerSeq: 'seq',
@@ -175,13 +177,14 @@ export async function fetchLiveDataset(): Promise<OsDataset> {
       : null
 
   // جداول 20261127000007 بجلب متسامح مستقل (null عند أي فشل — «غير متاح من الحي»)
-  const [appNotificationRows, notificationReadRows, timeEntryRows, environmentRows, lifecycleStepRows, lifecycleStateRows] = await Promise.all([
+  const [appNotificationRows, notificationReadRows, timeEntryRows, environmentRows, lifecycleStepRows, lifecycleStateRows, projectHealthRows] = await Promise.all([
     getRows<Omit<LiveNotification, 'read'>>(base, 'pgos_notifications', SELECTS.appNotifications).catch(() => null),
     getRows<{ notification_id: string }>(base, 'pgos_notification_reads', SELECTS.notificationReads).catch(() => null),
     getRows<LiveTimeEntry>(base, 'pgos_time_entries', SELECTS.timeEntries).catch(() => null),
     getRows<LiveEnvironment>(base, 'pgos_environments', SELECTS.environments).catch(() => null),
     getRows<LiveLifecycleStep>(base, 'pgos_lifecycle_steps', SELECTS.lifecycleSteps).catch(() => null),
     getRows<LiveLifecycleState>(base, 'pgos_project_lifecycle', SELECTS.lifecycleStates).catch(() => null),
+    getRows<LiveProjectHealth>(base, 'pgos_project_health', SELECTS.projectHealth).catch(() => null),
   ])
   const readIds = new Set((notificationReadRows ?? []).map((r) => r.notification_id))
   const notifications: LiveNotification[] | null = appNotificationRows
@@ -231,5 +234,6 @@ export async function fetchLiveDataset(): Promise<OsDataset> {
       lifecycleStepRows && lifecycleStateRows
         ? { steps: lifecycleStepRows, states: lifecycleStateRows }
         : null,
+    projectHealth: projectHealthRows,
   }
 }

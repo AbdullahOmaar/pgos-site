@@ -156,6 +156,28 @@ export interface OsDataset {
   environments: LiveEnvironment[] | null
   /* دورة حياة المشروع (مهاجرة 20261128000010): null = غير متاح من هذا المصدر */
   lifecycle: { steps: LiveLifecycleStep[]; states: LiveLifecycleState[] } | null
+  /* مؤشرات الصحة الأسبوعية (مهاجرة 20261128000011): null = غير متاح من هذا المصدر.
+     dev_rate_pct = بنود المرحلة الحالية المكتملة في آخر 7 أيام ÷ إجمالي بنود المرحلة. */
+  projectHealth: LiveProjectHealth[] | null
+}
+
+export interface LiveProjectHealth {
+  project_ref: string
+  project_name: string
+  week_start: string
+  phase_label: string | null
+  phase_pct: number | null
+  phase_pct_week_ago: number | null
+  weekly_delta_pp: number | null
+  dev_rate_pct: number | null
+  completed_week: number
+  completed_3d: number
+  sprint_done: number | null
+  sprint_total: number | null
+  sprint_pct: number | null
+  health: string
+  health_reason: string
+  computed_at: string
 }
 
 export interface LiveLifecycleStep {

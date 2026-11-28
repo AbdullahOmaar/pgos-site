@@ -3,7 +3,7 @@ import { Card, Chip, EmptyState, ErrorState, LoadingState } from '../components/
 import { FreshnessBadge } from '../components/v2/widgets'
 import { fmtDate } from '../lib/data'
 import { useOsData } from '../lib/live/provider'
-import type { LiveLifecycleState } from '../lib/live/types'
+import type { LiveLifecycleState, LiveProjectHealth } from '../lib/live/types'
 
 /*
  * صفحة «دورة حياة المشروع» — مصدر وحيد: جدولا pgos_lifecycle_steps (قالب موحّد)
@@ -15,6 +15,41 @@ const STATUS: Record<string, { label: string; tone: 'ok' | 'warn' | 'muted' }> =
   done: { label: 'اتعملت', tone: 'ok' },
   pending: { label: 'لسه', tone: 'warn' },
   na: { label: 'لا تنطبق', tone: 'muted' },
+}
+
+const HEALTH: Record<string, { dot: string; label: string; tone: 'ok' | 'warn' | 'bad' | 'muted' }> = {
+  green: { dot: '🟢', label: 'أخضر', tone: 'ok' },
+  yellow: { dot: '🟡', label: 'أصفر', tone: 'warn' },
+  red: { dot: '🔴', label: 'أحمر', tone: 'bad' },
+}
+
+function pct(v: number | null | undefined) {
+  return v == null ? '—' : `${Number(v).toLocaleString('en-US', { maximumFractionDigits: 1 })}%`
+}
+
+/* بطاقة صحة مشروع (أو الشركة ككل): شارة الصحة + نسبة التطور الأسبوعية + السبرنت + السبب.
+   dev_rate_pct = بنود المرحلة الحالية المكتملة في آخر 7 أيام ÷ إجمالي بنود المرحلة (تعريف موثق — لا إعادة تعريف). */
+function HealthBlock({ h, title }: { h: LiveProjectHealth; title?: string }) {
+  const meta = HEALTH[h.health] ?? { dot: '⚪', label: 'غير معروف', tone: 'muted' as const }
+  return (
+    <Card>
+      <p className="flex flex-wrap items-center gap-2">
+        {title ? <span className="font-bold">{title}</span> : null}
+        <Chip tone={meta.tone}>{meta.dot} صحة {meta.label}</Chip>
+        {h.phase_label ? <span className="text-xs text-muted">{h.phase_label}{h.phase_pct != null ? ` · ${pct(h.phase_pct)}` : ''}</span> : null}
+        <span className="text-[11px] text-muted">أسبوع يبدأ {fmtDate(h.week_start)}</span>
+      </p>
+      <p className="mt-2 text-[13px] leading-relaxed">
+        نسبة التطور الأسبوعية: <strong>{pct(h.dev_rate_pct)}</strong> — {h.completed_week} بند اكتملوا الأسبوع ده، {h.completed_3d} في آخر 3 أيام
+        {h.weekly_delta_pp != null ? ` · تغيّر المرحلة ${Number(h.weekly_delta_pp) > 0 ? '+' : ''}${h.weekly_delta_pp} نقطة` : ''}
+      </p>
+      {h.sprint_total != null ? (
+        <p className="mt-1 text-[13px] leading-relaxed">إنجاز السبرنت: <strong>{h.sprint_done}/{h.sprint_total} · {pct(h.sprint_pct)}</strong></p>
+      ) : null}
+      <p className="mt-2 rounded-xl border border-line bg-surface2 px-3 py-2 text-xs leading-relaxed">💚 {h.health_reason}</p>
+      <p className="mt-1 text-[11px] text-muted">حُسبت: {fmtDate(h.computed_at)}</p>
+    </Card>
+  )
 }
 
 function Progress({ done, applicable }: { done: number; applicable: number }) {
@@ -65,6 +100,9 @@ export default function LifecycleV2() {
   }
 
   const current = selected ?? projects[0]?.ref ?? null
+  const health = d.projectHealth ?? null
+  const companyHealth = health?.find((h) => h.project_ref === 'COMPANY') ?? null
+  const currentHealth = current ? (health?.find((h) => h.project_ref === current) ?? null) : null
   const sections = new Map<string, typeof lc extends null ? never : NonNullable<typeof lc>['steps']>()
   if (lc) {
     for (const step of [...lc.steps].sort((a, b) => a.sort_order - b.sort_order)) {
@@ -92,6 +130,16 @@ export default function LifecycleV2() {
         <EmptyState text="قالب دورة الحياة متصل ولسه فاضي — مفيش خطوات مسجلة لحد دلوقتي." />
       ) : (
         <>
+          {health === null ? (
+            <p className="mb-4 rounded-xl border border-line bg-surface px-3 py-2 text-xs leading-relaxed text-muted">
+              مؤشرات الصحة الأسبوعية غير متاحة من مصدر البيانات الحالي — بتيجي من قاعدة اوس (لقطة محدّثة أو قراءة حية بجلسة المالك).
+            </p>
+          ) : companyHealth ? (
+            <div className="mb-4">
+              <HealthBlock h={companyHealth} title="الشركة ككل" />
+            </div>
+          ) : null}
+
           <div className="mb-4 flex gap-2 overflow-x-auto pb-1">
             {projects.map((p) => {
               const pr = progressOf(p.ref)
@@ -111,10 +159,19 @@ export default function LifecycleV2() {
           </div>
 
           {current ? (
-            <Card className="mb-5">
-              <p className="mb-2 text-sm font-bold">{projects.find((p) => p.ref === current)?.name}</p>
-              <Progress {...progressOf(current)} />
-            </Card>
+            <div className="mb-5 space-y-3">
+              <Card>
+                <p className="mb-2 text-sm font-bold">{projects.find((p) => p.ref === current)?.name}</p>
+                <Progress {...progressOf(current)} />
+              </Card>
+              {health === null ? null : currentHealth ? (
+                <HealthBlock h={currentHealth} title="مؤشرات الصحة — الأسبوع الحالي" />
+              ) : (
+                <p className="rounded-xl border border-line bg-surface px-3 py-2 text-xs leading-relaxed text-muted">
+                  مؤشرات الصحة غير متاحة لهذا المشروع من المصدر الحالي.
+                </p>
+              )}
+            </div>
           ) : null}
 
           <div className="space-y-6">

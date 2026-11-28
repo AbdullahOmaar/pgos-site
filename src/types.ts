@@ -250,6 +250,25 @@ export interface SiteData {
   governance_ref: GovernanceRef
   /* بيانات المقر الافتراضي من قاعدة اوس (P2-09) — غائبة لو تعذّرت قراءتها وقت التوليد */
   office?: OfficeData | null
+  /* مؤشرات صحة المشاريع من قاعدة اوس (مهاجرة 20261128000011) — غائبة لو تعذّرت قراءتها وقت التوليد */
+  project_health?: {
+    project_ref: string
+    project_name: string
+    week_start: string
+    phase_label: string | null
+    phase_pct: number | null
+    phase_pct_week_ago: number | null
+    weekly_delta_pp: number | null
+    dev_rate_pct: number | null
+    completed_week: number
+    completed_3d: number
+    sprint_done: number | null
+    sprint_total: number | null
+    sprint_pct: number | null
+    health: string
+    health_reason: string
+    computed_at: string
+  }[] | null
   /* دورة حياة المشروع من قاعدة اوس (مهاجرة 20261128000010) — غائبة لو تعذّرت قراءتها وقت التوليد */
   lifecycle?: {
     steps: {
