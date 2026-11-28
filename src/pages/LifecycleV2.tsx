@@ -119,7 +119,7 @@ export default function LifecycleV2() {
       <header className="mb-4">
         <h1 className="text-[22px] leading-8 font-bold sm:text-2xl">دورة حياة المشروع</h1>
         <p className="mt-1 text-sm text-muted">
-          قالب موحّد من {lc ? lc.steps.length : ٢٧} خطوة في ٨ أقسام — من التأسيس لما بعد البرودكشن — وحالة كل خطوة لكل مشروع زي ما هي مسجلة في اوس.
+          قالب موحّد من {lc?.steps.length ?? 27} خطوة في ٨ أقسام — من التأسيس لما بعد البرودكشن — وحالة كل خطوة لكل مشروع زي ما هي مسجلة في اوس.
         </p>
         <div className="mt-3"><FreshnessBadge source={d.source} generatedAt={d.generatedAt} /></div>
       </header>
